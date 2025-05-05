@@ -6,6 +6,9 @@ class ConversationApiClient(ABC):
     def send_message(self, conversation_id: str, message: str, user_id: str):
         raise NotImplementedError
 
+    @abstractmethod
+    def send_message_background_check(self, conversation_id: str, message: str, user_id: str):
+        raise NotImplementedError
 
 class ResourceManagerApiClient(ABC):
     @abstractmethod

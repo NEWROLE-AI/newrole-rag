@@ -1,11 +1,25 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
+Parameters:
+  Environment:
+    Description: 'Environment (dev or prod)'
+    Type: String
+    AllowedValues:
+      - dev
+      - prod
+    Default: dev
+
+  VpcStackName:
+    Description: 'Name of the VPC stack to import resources from'
+    Type: String
+    Default: ai-custom-bot-infr
+
 Resources:
   ApiGateway:
     Type: AWS::Serverless::Api
     Properties:
-      Name: !Sub "AdminPanelApiGateway-dev"
+      Name: !Sub "AdminPanelApiGateway-${Environment}"
       StageName: "test"
       TracingEnabled: true
       BinaryMediaTypes:
@@ -15,6 +29,7 @@ Resources:
   CreatePromptFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub "CreatePrompt-${Environment}"
       Handler: src.entrypoints.api.handlers.create_prompt
       Runtime: python3.12
       CodeUri: .
@@ -30,7 +45,8 @@ Resources:
         Variables:
           AWS_XRAY_CONTEXT_MISSING: LOG_ERROR
           LOG_LEVEL: INFO
-          ENVIRONMENT: dev
+          ENVIRONMENT: !Sub "${Environment}"
+          REGION: !Sub "${AWS::Region}"
       Tracing: Active
       Events:
         CreatePromptApi:
@@ -41,15 +57,20 @@ Resources:
             Method: POST
       VpcConfig:
         SecurityGroupIds:
-          - sg-0159afa3ca6ce8d06
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-LambdaSGId"
         SubnetIds:
-          - subnet-01a6f0d8ab5654d8e
-          - subnet-0870c5719ed26e6c1
-          - subnet-0544758b0bdeb9cf3
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetC"
 
   CreateAgentChatBotFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub "CreateAgentChatBot-${Environment}"
       Handler: src.entrypoints.api.handlers.create_agent_chat_bot
       Runtime: python3.12
       CodeUri: .
@@ -65,7 +86,8 @@ Resources:
         Variables:
           AWS_XRAY_CONTEXT_MISSING: LOG_ERROR
           LOG_LEVEL: INFO
-          ENVIRONMENT: dev
+          ENVIRONMENT: !Sub "${Environment}"
+          REGION: !Sub "${AWS::Region}"
       Tracing: Active
       Events:
         CreateAgentChatBotApi:
@@ -76,15 +98,20 @@ Resources:
             Method: POST
       VpcConfig:
         SecurityGroupIds:
-          - sg-0159afa3ca6ce8d06
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-LambdaSGId"
         SubnetIds:
-          - subnet-01a6f0d8ab5654d8e
-          - subnet-0870c5719ed26e6c1
-          - subnet-0544758b0bdeb9cf3
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetC"
 
   ChangeSettingsAgentChatBotFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub "ChangeSettingsAgentChatBot-${Environment}"
       Handler: src.entrypoints.api.handlers.change_settings_agent_chat_bot
       Runtime: python3.12
       CodeUri: .
@@ -100,7 +127,8 @@ Resources:
         Variables:
           AWS_XRAY_CONTEXT_MISSING: LOG_ERROR
           LOG_LEVEL: INFO
-          ENVIRONMENT: dev
+          ENVIRONMENT: !Sub "${Environment}"
+          REGION: !Sub "${AWS::Region}"
       Tracing: Active
       Events:
         ChangeSettingsAgentChatBotApi:
@@ -111,8 +139,53 @@ Resources:
             Method: PUT
       VpcConfig:
         SecurityGroupIds:
-          - sg-0159afa3ca6ce8d06
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-LambdaSGId"
         SubnetIds:
-          - subnet-01a6f0d8ab5654d8e
-          - subnet-0870c5719ed26e6c1
-          - subnet-0544758b0bdeb9cf3
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetC"
+
+  UpdatePromptTextFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "UpdatePromptText-${Environment}"
+      Handler: src.entrypoints.api.handlers.update_prompt_text
+      Runtime: python3.12
+      CodeUri: .
+      Timeout: 30
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+        - AWSXrayWriteOnlyAccess
+        - AmazonS3FullAccess
+        - AmazonOpenSearchServiceFullAccess
+        - SecretsManagerReadWrite
+      Environment:
+        Variables:
+          AWS_XRAY_CONTEXT_MISSING: LOG_ERROR
+          LOG_LEVEL: INFO
+          ENVIRONMENT: !Sub "${Environment}"
+          REGION: !Sub "${AWS::Region}"
+      Tracing: Active
+      Events:
+        UpdatePromptTextApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /api/v1/prompts
+            Method: PUT
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-LambdaSGId"
+        SubnetIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetC"

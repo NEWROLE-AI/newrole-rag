@@ -16,8 +16,8 @@ class FileProcessorImpl(FileProcessor):
     def __init__(self, token: str):
         self.token = token
         self.supported_types = {
-            'application/pdf': self._process_pdf,
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': self._process_docx
+            "application/pdf": self._process_pdf,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": self._process_docx,
         }
 
     def _process_pdf(self, file_content: bytes) -> str:
@@ -44,7 +44,7 @@ class FileProcessorImpl(FileProcessor):
 
     def _download_file(self, file_url: str) -> bytes | None:
         try:
-            headers = {'Authorization': f'Bearer {self.token}'}
+            headers = {"Authorization": f"Bearer {self.token}"}
             response = requests.get(file_url, headers=headers)
             response.raise_for_status()
             return response.content
@@ -62,12 +62,14 @@ class FileProcessorImpl(FileProcessor):
         processed_text = []
 
         for file in files:
-            mime_type = file.get('mimetype', '')
+            mime_type = file.get("mimetype", "")
             if mime_type in self.supported_types:
-                file_content = self._download_file(file['url_private'])
+                file_content = self._download_file(file["url_private"])
                 if file_content:
                     extracted_text = self.process_file(file_content, mime_type)
                     if extracted_text:
-                        processed_text.append(f"Content from {file['name']}:\n{extracted_text}")
+                        processed_text.append(
+                            f"Content from {file['name']}:\n{extracted_text}"
+                        )
 
         return "\n\n".join(processed_text)

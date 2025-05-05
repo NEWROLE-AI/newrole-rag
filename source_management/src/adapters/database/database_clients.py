@@ -29,6 +29,7 @@ class PostgreSQLClient(DatabaseClient):
             await self.conn.close()
             logger.info("PostgreSQL connection closed")
 
+
 class MySQLClient(DatabaseClient):
     """MySQL database client implementation."""
 
@@ -49,6 +50,7 @@ class MySQLClient(DatabaseClient):
             self.pool.close()
             await self.pool.wait_closed()
             logger.info("MySQL connection closed")
+
 
 class MsSqlClient(DatabaseClient):
     """MS SQL Server database client implementation."""

@@ -2,11 +2,15 @@ from aws_lambda_powertools import Logger
 from googleapiclient.discovery import Resource
 from googleapiclient.errors import HttpError
 
-from src.application.exceptions.value_error_exception import CustomValueError, ErrorStatus
+from src.application.exceptions.value_error_exception import (
+    CustomValueError,
+    ErrorStatus,
+)
 from src.application.ports.google_drive_client import GoogleDriveClient
 
 
 logger = Logger(service="google_drive_api_client")
+
 
 class ApiGoogleDriveClient(GoogleDriveClient):
     """
@@ -35,15 +39,29 @@ class ApiGoogleDriveClient(GoogleDriveClient):
         Raises:
             CustomValueError: If url isn't a Google Drive folder.
         """
-        if google_drive_url.strip("https://").strip("http://").startswith("drive.google.com") and 'folders' in google_drive_url:
-            drive_id = google_drive_url.split('folders/')[1].split('?')[0]
+        if (
+            google_drive_url.strip("https://")
+            .strip("http://")
+            .startswith("drive.google.com")
+            and "folders" in google_drive_url
+        ):
+            drive_id = google_drive_url.split("folders/")[1].split("?")[0]
         else:
-            raise CustomValueError(error_status=ErrorStatus.BAD_REQUEST, message="Incorrect URL format. Make sure it is a link to a Google Drive folder.")
+            raise CustomValueError(
+                error_status=ErrorStatus.BAD_REQUEST,
+                message="Incorrect URL format. Make sure it is a link to a Google Drive folder.",
+            )
 
         try:
             self.google_drive_client.files().get(fileId=drive_id, fields="id").execute()
         except HttpError as error:
             if error.resp.status in [403, 401]:
-                raise CustomValueError(error_status=ErrorStatus.BAD_REQUEST, message="Folder access error in google drive")
+                raise CustomValueError(
+                    error_status=ErrorStatus.BAD_REQUEST,
+                    message="Folder access error in google drive",
+                )
             elif error.resp.status == 404:
-                raise CustomValueError(error_status=ErrorStatus.NOT_FOUND, message="Folder not found in google drive")
+                raise CustomValueError(
+                    error_status=ErrorStatus.NOT_FOUND,
+                    message="Folder not found in google drive",
+                )

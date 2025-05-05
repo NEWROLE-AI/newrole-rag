@@ -45,7 +45,6 @@ class HttpSourceManagementApiClient(SourceManagementApiClient):
             list[str]: A list of resource IDs associated with the knowledge base.
         """
         url = f"{self._base_url}/api/v1/resources"
-        print(url)
         logger.info(
             f"HttpSourceManagementApiClient: Fetching resources ids with ID={knowledge_base_id}"
         )
@@ -60,7 +59,7 @@ class HttpSourceManagementApiClient(SourceManagementApiClient):
                     raise HTTPError()
                 resource_ids_data = await response.json()
             logger.info(
-                f"HttpVideoSearchApiClient: Successfully fetched resource ids data for ID={knowledge_base_id}"
+                f"HttpSourceManagementApiClient: Successfully fetched resource ids data for ID={knowledge_base_id}"
             )
             return resource_ids_data.get("resource_ids", [])
         except ClientError as e:

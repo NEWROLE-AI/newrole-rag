@@ -29,7 +29,6 @@ class DatabaseManager(ABC):
         """
         raise NotImplementedError()
 
-
     @abstractmethod
     async def check_database_connection(self, connection_params: dict[str, str]):
         """

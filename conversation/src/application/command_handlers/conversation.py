@@ -69,7 +69,7 @@ class ConversationCommandHandler(BaseCommandHandler):
             if not conversation:
                 conversation = Conversation(
                     conversation_id=command.conversation_id,
-                    agent_chat_bot_id="3f65009e-9275-4f6f-9e4c-5c105de5c1ed",
+                    agent_chat_bot_id="013ce799-00c2-47da-beaa-3690dd9d28a7",
                     messages=[],
                 )
                 await uow.conversations.save(conversation)
@@ -87,34 +87,30 @@ class ConversationCommandHandler(BaseCommandHandler):
             # Fetch the agent details associated with the conversation
             agent = await uow.agent_chat_bots.get(conversation.agent_chat_bot_id)
 
-            # Fetch the resource IDs from the knowledge base
-            knowledge_base_resource_ids = await self._source_management_api_client.get_resource_ids_by_knowledge_base_id(
-                agent.knowledge_base_id
-            )
-
-            # Vectorize the user message
-            vectorized_user_message = await self._vectorizer.vectorize_text(
+            sql_query = await self._ai_service.generate_sql_response(
                 command.message
             )
 
             # Retrieve knowledge from the vectorized knowledge base
-            vectorized_knowledge_base = await uow.vectorized_knowledge.get_knn(
-                knowledge_base_id=agent.knowledge_base_id,
-                resource_ids=knowledge_base_resource_ids,
-                vectorized_query=vectorized_user_message,
-            )
-
+            knowledge_base = await uow.execute(sql_query)
+            logger.info("knowledge base get success", extra={"knowledge_base": knowledge_base})
             # Generate a response using the AI service
-            response = await self._ai_service.generate_response(
+            message, payload = await self._ai_service.generate_response(
                 prompt=agent.prompt,
-                vectorized_knowledge_base=vectorized_knowledge_base,
+                vectorized_knowledge_base=knowledge_base,
                 messages=conversation.messages,
             )
-
+            if payload:
+                if any(key != "data_ready" for key in payload):
+                    logger.info("Save background check")
+                    request_id = await uow.background_checks.save(command.user_id, payload)
+                    message += f" Request_id: {request_id}"
+                else:
+                    logger.warning("Payload contains only 'data_ready', skipping save")
             # Create a message for the agent's response
             agent_message = Message(
                 message_id=str(uuid.uuid4()),
-                content=response,
+                content=message,
                 role="assistant",
                 user_id="assistant",
             )
@@ -126,5 +122,5 @@ class ConversationCommandHandler(BaseCommandHandler):
             # Return the response as a dictionary
             return {
                 "conversation_id": conversation.conversation_id,
-                "message": response,
+                "message": message,
             }

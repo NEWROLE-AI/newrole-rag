@@ -56,6 +56,18 @@ class ConversationRepository(ABC):
         raise NotImplementedError
 
 
+class BackgroundCheckRepository(ABC):
+    """
+    Repository for managing background_check in the system.
+
+    Methods:
+        save: Saves a background_check to the database.
+    """
+    @abstractmethod
+    async def save(self, user_id: str, background_check: dict):
+        raise NotImplementedError
+
+
 class UnitOfWork(ABC):
     """
     Unit of work for managing transactions across multiple repositories.
@@ -74,6 +86,7 @@ class UnitOfWork(ABC):
     vectorized_knowledge: VectorizedKnowledgeRepository
     agent_chat_bots: AgentChatBotRepository
     conversations: ConversationRepository
+    background_checks: BackgroundCheckRepository
 
     @abstractmethod
     async def __aenter__(self) -> "UnitOfWork":
@@ -85,4 +98,8 @@ class UnitOfWork(ABC):
 
     @abstractmethod
     async def commit(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def execute(self, query: str) -> list[dict]:
         raise NotImplementedError

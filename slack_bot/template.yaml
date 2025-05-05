@@ -1,21 +1,35 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
+Parameters:
+  Environment:
+    Description: 'Environment (dev or prod)'
+    Type: String
+    AllowedValues:
+      - dev
+      - prod
+    Default: dev
+
+  VpcStackName:
+    Description: 'Name of the VPC stack to import resources from'
+    Type: String
+    Default: ai-custom-bot-infr
+
 
 Resources:
   ApiGateway:
     Type: AWS::Serverless::Api
     Properties:
-      Name: !Sub "SlackBotApiGateway-dev"
-      StageName: "test"
+      Name: !Sub "SlackBotApiGateway-${Environment}"
+      StageName: !Ref Environment
       TracingEnabled: true
       BinaryMediaTypes:
-        - "multipart/form-data"
         - "application/json"
 
   SlackBotFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub "SlackBot-${Environment}"
       Handler: src.entrypoints.api.handlers.handler
       Runtime: python3.12
       CodeUri: .
@@ -28,17 +42,13 @@ Resources:
         - AmazonOpenSearchServiceFullAccess
         - SecretsManagerReadWrite
         - AmazonDynamoDBFullAccess
-        - Statement:
-            - Effect: Allow
-              Action: lambda:InvokeFunction
-              Resource:
-                - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:ai-custom-bot-slack-SlackBotFunction-*"
-                - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:ai-custom-bot-slack-SlackBotFunction"
+        - AWSLambda_FullAccess
       Environment:
         Variables:
           AWS_XRAY_CONTEXT_MISSING: LOG_ERROR
           LOG_LEVEL: INFO
-          ENVIRONMENT: dev
+          ENVIRONMENT: !Sub "${Environment}"
+          REGION: !Sub "${AWS::Region}"
       Tracing: Active
       Events:
         SlackEvent:
@@ -49,8 +59,61 @@ Resources:
             Method: POST
       VpcConfig:
         SecurityGroupIds:
-          - sg-0159afa3ca6ce8d06
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-LambdaSGId"
         SubnetIds:
-          - subnet-01a6f0d8ab5654d8e
-          - subnet-0870c5719ed26e6c1
-          - subnet-0544758b0bdeb9cf3
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetC"
+      AutoPublishAlias: !Ref Environment
+      ProvisionedConcurrencyConfig:
+        ProvisionedConcurrentExecutions: 5
+
+  SlackBotCommandFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "SlackBotCommand-${Environment}"
+      Handler: src.entrypoints.api.handlers.handler
+      Runtime: python3.12
+      CodeUri: .
+      Timeout: 30
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+        - AWSXrayWriteOnlyAccess
+        - AmazonS3FullAccess
+        - AmazonOpenSearchServiceFullAccess
+        - SecretsManagerReadWrite
+        - AmazonDynamoDBFullAccess
+        - AWSLambda_FullAccess
+      Environment:
+        Variables:
+          AWS_XRAY_CONTEXT_MISSING: LOG_ERROR
+          LOG_LEVEL: INFO
+          ENVIRONMENT: !Sub "${Environment}"
+          REGION: !Sub "${AWS::Region}"
+      Tracing: Active
+      Events:
+        SlackBotCommand:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /api/v1/slack/commands
+            Method: POST
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-LambdaSGId"
+        SubnetIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetC"
+      AutoPublishAlias: !Ref Environment
+      ProvisionedConcurrencyConfig:
+        ProvisionedConcurrentExecutions: 5

@@ -1,4 +1,5 @@
 import json
+import os
 import traceback
 
 import boto3
@@ -28,12 +29,13 @@ from src.application.command_handlers.create_resource import (
 logger = Logger(service="ioc")
 
 
-def get_secret(secrets_cache: SecretCache) -> dict:
+def get_secret(secrets_cache: SecretCache, env: str) -> dict:
     """
     Retrieves secrets from AWS Secrets Manager.
 
     Args:
         secrets_cache (SecretCache): AWS Secrets Manager cache instance
+        env (str): Environment(dev/prod)
 
     Returns:
         dict: Dictionary containing secret values
@@ -41,7 +43,7 @@ def get_secret(secrets_cache: SecretCache) -> dict:
     Raises:
         RuntimeError: If secret retrieval fails
     """
-    secret_name = "dev/ai-custom-bot/source-management"
+    secret_name = f"{env}/ai-custom-bot/source-management"
     try:
         logger.info(f"Getting secret {secret_name}")
         secret_value = secrets_cache.get_secret_string(secret_name)
@@ -66,12 +68,14 @@ class Container(containers.DeclarativeContainer):
         - Query services
     """
 
+    region = os.environ.get("REGION")
+    environment = os.environ.get("ENVIRONMENT")
     logger.info("Initializing Container")
     # AWS and database client setup
-    secrets_manager_client = boto3.client("secretsmanager", region_name="eu-north-1")
+    secrets_manager_client = boto3.client("secretsmanager", region_name=region)
     cache_config = SecretCacheConfig()
     secrets_cache = SecretCache(config=cache_config, client=secrets_manager_client)
-    secrets = get_secret(secrets_cache)
+    secrets = get_secret(secrets_cache, environment)
 
     # SQL client configuration
     db_session_maker = providers.Resource(
@@ -85,55 +89,46 @@ class Container(containers.DeclarativeContainer):
 
     # Dynamo client configuration
     dynamo_client = providers.Singleton(
-        boto3.resource, service_name="dynamodb", region_name="eu-north-1"
+        boto3.resource, service_name="dynamodb", region_name=region
     )
 
     # Application components
-    s3_client = providers.Singleton(
-        boto3_client, service_name="s3", region_name="eu-north-1"
-    )
+    s3_client = providers.Singleton(boto3_client, service_name="s3", region_name=region)
 
     secrets_client = providers.Singleton(
-        boto3_client, service_name="secretsmanager", region_name="eu-north-1"
+        boto3_client, service_name="secretsmanager", region_name=region
     )
 
     # Google Drive client configuration
     google_credentials = service_account.Credentials.from_service_account_info(
-                json.loads((secrets.get("google_drive_credentials"))),
-                scopes=['https://www.googleapis.com/auth/drive.readonly']
+        json.loads((secrets.get("google_drive_credentials"))),
+        scopes=["https://www.googleapis.com/auth/drive.readonly"],
     )
 
     google_drive_client = providers.Singleton(
         google_client,
         serviceName="drive",
         version="v3",
-        http=AuthorizedHttp(
-            google_credentials,
-            http=httplib2.Http(timeout=10)
-        )
+        http=AuthorizedHttp(google_credentials, http=httplib2.Http(timeout=10)),
     )
 
     dynamodb_client = providers.Singleton(
-        DynamoDbClientImpl,
-        dynamodb_client=dynamo_client
+        DynamoDbClientImpl, dynamodb_client=dynamo_client
     )
 
     google_drive_api_client = providers.Singleton(
-        ApiGoogleDriveClient,
-        google_drive_client=google_drive_client
+        ApiGoogleDriveClient, google_drive_client=google_drive_client
     )
 
-    storage_manager = providers.Factory(
+    storage_manager = providers.Singleton(
         S3StorageManager,
         client=s3_client,
         bucket_name=secrets.get("s3_bucket_name"),
     )
 
-    data_base_manager = providers.Factory(
-        DatabaseManagerImpl
-    )
+    data_base_manager = providers.Factory(DatabaseManagerImpl)
 
-    unit_of_work = providers.Factory(
+    unit_of_work = providers.Singleton(
         UnitOfWorkImpl,
         session=db_session_factory,
         dynamo_client=dynamo_client,
@@ -142,12 +137,12 @@ class Container(containers.DeclarativeContainer):
     )
 
     # Command handlers configuration
-    create_knowledge_base_handler = providers.Factory(
+    create_knowledge_base_handler = providers.Singleton(
         CreateKnowledgeBaseCommandHandler,
         unit_of_work=unit_of_work,
     )
 
-    create_resource_handler = providers.Factory(
+    create_resource_handler = providers.Singleton(
         CreateResourceCommandHandler,
         unit_of_work=unit_of_work,
         storage_manager=storage_manager,
@@ -156,7 +151,7 @@ class Container(containers.DeclarativeContainer):
         dynamodb_client=dynamodb_client,
     )
 
-    query_service = providers.Factory(
+    query_service = providers.Singleton(
         QueryService,
         sql_session=db_session_factory,
         dynamo_client=dynamo_client,

@@ -55,6 +55,17 @@ class PromptRepository(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    async def update(self, prompt_id: str, **kwargs):
+        """
+        Update an existing prompt's settings.
+
+        Args:
+            prompt_id: Unique identifier of the prompt to update
+            **kwargs: Settings to update, may include text
+        """
+        raise NotImplementedError
+
 
 class UnitOfWork(ABC):
     """

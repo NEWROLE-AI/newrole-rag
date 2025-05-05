@@ -240,6 +240,50 @@ class SqlPromptRepository(PromptRepository):
         else:
             raise ValueError(f"Prompt with ID {prompt_id} not found")
 
+    async def update(self, prompt_id: str, **kwargs):
+        """
+        Updates an existing prompt in the database.
+
+        Args:
+            prompt_id (str): The ID of the prompt to update.
+            **kwargs: Key-value pairs of fields to update.
+
+        Raises:
+            ValueError: If updating the prompt_id and the new prompt doesn't exist.
+        """
+        logger.info(f"Updating text for prompt with ID: {prompt_id}")
+
+        # Verify prompt exists before update
+        verify_query = text(
+            """
+            SELECT id FROM prompts
+            WHERE prompt_id = :prompt_id
+            """
+        )
+        result = await self._session.execute(
+            verify_query, {"prompt_id": prompt_id}
+        )
+        row = result.fetchone()
+        if not row:
+            logger.error(f"Prompt with prompt_id {prompt_id} not found")
+            raise ValueError(f"Prompt with prompt_id {prompt_id} does not exist")
+
+        # Update prompt text
+        update_query = text(
+            """
+            UPDATE prompts
+            SET text = :text
+            WHERE prompt_id = :prompt_id
+            """
+        )
+        await self._session.execute(
+            update_query,
+            {
+                "prompt_id": prompt_id,
+                "text": kwargs.get("text", ""),
+            }
+        )
+        logger.info(f"Successfully updated text for prompt: {prompt_id}")
 
 class SqlUnitOfWork(UnitOfWork):
     """

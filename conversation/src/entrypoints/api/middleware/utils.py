@@ -37,6 +37,7 @@ def lambda_handler_decorator(
         def wrapper(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
             loop = asyncio.get_event_loop()
             try:
+                logger.info("start parse params")
                 # Extract and merge parameters from different sources
                 path_parameters = event.get("pathParameters", {}) or {}
                 body_raw = event.get("body")
@@ -58,6 +59,7 @@ def lambda_handler_decorator(
 
                 # Validate and process request
                 request = parse(model=model, event=event_data)
+                logger.info("start execute handler")
                 result = loop.run_until_complete(handler(request))
 
                 return {

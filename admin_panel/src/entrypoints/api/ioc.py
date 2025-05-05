@@ -1,4 +1,5 @@
 import json
+import os
 import traceback
 
 import boto3
@@ -16,16 +17,18 @@ from src.application.command_handlers.create_agent_chat_bot import (
     CreateAgentChatBotCommandHandler,
 )
 from src.application.command_handlers.create_prompt import CreatePromptCommandHandler
+from src.application.command_handlers.update_prompt_text import UpdatePromptTextCommandHandler
 
 logger = Logger(service="ioc")
 
 
-def get_secret(secrets_cache: SecretCache) -> dict:
+def get_secret(secrets_cache: SecretCache, env: str) -> dict:
     """
     Retrieves secrets from AWS Secrets Manager.
 
     Args:
         secrets_cache (SecretCache): AWS Secrets Manager cache instance
+        env (str): environment(dev/prod)
 
     Returns:
         dict: Dictionary containing secret values
@@ -33,7 +36,7 @@ def get_secret(secrets_cache: SecretCache) -> dict:
     Raises:
         RuntimeError: If secret retrieval fails
     """
-    secret_name = "dev/ai-custom-bot/admin-panel"
+    secret_name = f"{env}/ai-custom-bot/admin-panel"
     try:
         logger.info(f"Getting secret {secret_name}")
         secret_value = secrets_cache.get_secret_string(secret_name)
@@ -55,14 +58,15 @@ class Container(DeclarativeContainer):
         - Database connection and session management(sql)
         - Command handlers
     """
-
+    region = os.environ.get("REGION")
+    environment = os.environ.get("ENVIRONMENT")
     logger.info("Initializing Container")
     # AWS and database client setup
-    secrets_manager_client = boto3.client("secretsmanager", region_name="eu-north-1")
+    secrets_manager_client = boto3.client("secretsmanager", region_name=region)
     cache_config = SecretCacheConfig()
     secrets_cache = SecretCache(config=cache_config, client=secrets_manager_client)
 
-    secrets = get_secret(secrets_cache)
+    secrets = get_secret(secrets_cache, environment)
 
     # SQL client configuration
     db_session_maker = providers.Resource(
@@ -93,5 +97,10 @@ class Container(DeclarativeContainer):
 
     change_settings_agent_chat_bot_handler = providers.Factory(
         ChangeSettingsAgentChatBotCommandHandler,
+        unit_of_work=unit_of_work,
+    )
+
+    update_prompt_text_handler = providers.Factory(
+        UpdatePromptTextCommandHandler,
         unit_of_work=unit_of_work,
     )

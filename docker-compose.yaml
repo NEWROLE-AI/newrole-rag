@@ -19,7 +19,7 @@ services:
     logging:
       driver: awslogs
       options:
-        awslogs-group: "/docker/dev/vectorization_core"
+        awslogs-group: "/docker/${ENVIRONMENT}/vectorization_core"
         awslogs-region: ${AWS_REGION}
         awslogs-create-group: "true"
 
@@ -42,7 +42,32 @@ services:
     logging:
       driver: awslogs
       options:
-        awslogs-group: "/docker/dev/slack_bot"
+        awslogs-group: "/docker/${ENVIRONMENT}/slack_bot"
+        awslogs-region: ${AWS_REGION}
+        awslogs-create-group: "true"
+
+  conversation-app:
+    build:
+      context: conversation
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"
+    env_file:
+      - ./.env
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_DEFAULT_REGION=${AWS_REGION}
+      - ENVIRONMENT=${ENVIRONMENT}
+    volumes:
+      - ./conversation:/app
+    networks:
+      - app-network
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: "/docker/${ENVIRONMENT}/conversation"
         awslogs-region: ${AWS_REGION}
         awslogs-create-group: "true"
 

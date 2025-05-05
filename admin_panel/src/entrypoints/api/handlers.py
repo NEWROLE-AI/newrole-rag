@@ -9,11 +9,13 @@ from src.application.command_handlers.create_agent_chat_bot import (
     CreateAgentChatBotCommandHandler,
 )
 from src.application.command_handlers.create_prompt import CreatePromptCommandHandler
+from src.application.command_handlers.update_prompt_text import UpdatePromptTextCommandHandler
 from src.application.commands.change_settings_chat_bot import (
     ChangeSettingsAgentChatBotCommand,
 )
 from src.application.commands.create_agent_chat_bot import CreateAgentChatBotCommand
 from src.application.commands.create_prompt import CreatePromptCommand
+from src.application.commands.update_prompt_text import UpdatePromptTextCommand
 from src.entrypoints.api.middleware.utils import lambda_handler_decorator
 from src.entrypoints.api.models import api_models
 from src.entrypoints.api.ioc import Container
@@ -126,6 +128,40 @@ async def change_settings_agent_chat_bot(
     logger.info("Handler execution completed")
 
     response = api_models.ChangeSettingsAgentChatBotResponse(**result)
+    logger.info(f"Returning response: {response}")
+    return response
+
+
+@lambda_handler_decorator(api_models.UpdatePromptTextRequest)
+@inject
+async def update_prompt_text(
+    request: api_models.UpdatePromptTextRequest,
+    handler: UpdatePromptTextCommandHandler = Closing[
+        Provide[Container.update_prompt_text_handler]
+    ],
+) -> api_models.UpdatePromptTextResponse:
+    """
+    Handles requests to update text of an existing prompt. Processes a
+    UpdatePromptTextRequest and returns a UpdatePromptTextResponse.
+
+    Args:
+        request (api_models.UpdatePromptTextRequest): The settings change request.
+        handler (UpdatePromptTextCommandHandler): The command handler to process the request.
+
+    Returns:
+        api_models.UpdatePromptTextResponse: The response containing the updated settings.
+    """
+    logger.info(f"Received request for update text prompt: {request}")
+    # Create command from request
+    command = UpdatePromptTextCommand(**request.model_dump())
+    logger.info(f"Created command: {command}")
+
+    # Execute handler
+    logger.info(f"Handler instance before execution: {handler}")
+    result = await handler(command)
+    logger.info("Handler execution completed")
+
+    response = api_models.UpdatePromptTextResponse()
     logger.info(f"Returning response: {response}")
     return response
 

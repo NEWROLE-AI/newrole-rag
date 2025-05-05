@@ -10,7 +10,10 @@ from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.parser import parse, ValidationError
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
-from src.application.exceptions.value_error_exception import ErrorStatus, CustomValueError
+from src.application.exceptions.value_error_exception import (
+    ErrorStatus,
+    CustomValueError,
+)
 
 logger = Logger()
 
@@ -87,7 +90,7 @@ def lambda_handler_decorator(
 
                 status_code_errors = {
                     ErrorStatus.NOT_FOUND: 404,
-                    ErrorStatus.BAD_REQUEST: 400
+                    ErrorStatus.BAD_REQUEST: 400,
                 }
                 return {
                     "statusCode": status_code_errors[e.error_status],

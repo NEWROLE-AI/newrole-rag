@@ -1,4 +1,5 @@
 import json
+import os
 import traceback
 
 from fastapi import FastAPI
@@ -12,7 +13,10 @@ from slack_bolt import App
 from src.adapters.file_processor import FileProcessorImpl
 from src.application.services.conversation_service import ConversationService
 from src.application.services.channel_service import ChannelService
-from src.adapters.http_api_client import HttpConversationApiClient, HttpResourceManagerApiClient
+from src.adapters.http_api_client import (
+    HttpConversationApiClient,
+    HttpResourceManagerApiClient,
+)
 from src.application.handlers.message_handlers import MessageHandler
 from src.application.handlers.channel_handlers import ChannelHandler
 
@@ -20,12 +24,13 @@ from src.application.handlers.channel_handlers import ChannelHandler
 logger = Logger(service="ioc")
 
 
-def get_secret(secrets_cache: SecretCache) -> dict:
+def get_secret(secrets_cache: SecretCache, env: str) -> dict:
     """
     Retrieves secrets from AWS Secrets Manager.
 
     Args:
         secrets_cache (SecretCache): AWS Secrets Manager cache instance
+        env (str): Environment(dev/prod)
 
     Returns:
         dict: Dictionary containing secret values
@@ -33,7 +38,7 @@ def get_secret(secrets_cache: SecretCache) -> dict:
     Raises:
         RuntimeError: If secret retrieval fails
     """
-    secret_name = "dev/ai-custom-bot/slack-bot"
+    secret_name = f"{env}/ai-custom-bot/slack-bot"
     try:
         logger.info(f"Getting secret {secret_name}")
         secret_value = secrets_cache.get_secret_string(secret_name)
@@ -56,12 +61,14 @@ class Container(containers.DeclarativeContainer):
         - Command handlers
     """
 
+    region = os.environ.get("REGION")
+    environment = os.environ.get("ENVIRONMENT")
     logger.info("Initializing Container")
     # AWS and database client setup
-    secrets_manager_client = boto3.client("secretsmanager", region_name="eu-north-1")
+    secrets_manager_client = boto3.client("secretsmanager", region_name=region)
     cache_config = SecretCacheConfig()
     secrets_cache = SecretCache(config=cache_config, client=secrets_manager_client)
-    secrets = get_secret(secrets_cache)
+    secrets = get_secret(secrets_cache, environment)
 
     http_session = providers.Singleton(
         Session,
@@ -70,14 +77,17 @@ class Container(containers.DeclarativeContainer):
     # Core dependencies
     conversation_api_client = providers.Singleton(
         HttpConversationApiClient,
-        session=http_session,
         conversation_url=secrets.get("conversation_url"),
     )
     resource_manager_api_client = providers.Singleton(
         HttpResourceManagerApiClient,
-        session=http_session,
         source_management_url=secrets.get("resource_manager_url"),
     )
+
+    file_processor = providers.Singleton(
+        FileProcessorImpl, token=secrets.get("BOT_TOKEN")
+    )
+
     # Services
     conversation_service = providers.Singleton(
         ConversationService, api_client=conversation_api_client
@@ -87,11 +97,16 @@ class Container(containers.DeclarativeContainer):
         ChannelService, api_client=resource_manager_api_client
     )
 
-    # Handlers
-    message_handler = providers.Singleton(
-        MessageHandler, conversation_service=conversation_service
+    dynamo_client = providers.Singleton(
+        boto3.resource, service_name="dynamodb", region_name=region
     )
 
+    # Handlers
+    message_handler = providers.Singleton(
+        MessageHandler,
+        conversation_service=conversation_service,
+        file_processor=file_processor,
+    )
     channel_handler = providers.Singleton(
         ChannelHandler, channel_service=channel_service
     )
@@ -102,27 +117,3 @@ class Container(containers.DeclarativeContainer):
         token=secrets.get("BOT_TOKEN"),
         signing_secret=secrets.get("SIGNING_SECRET"),
     )
-
-
-logger.info("Initializing Container")
-# AWS and database client setup
-secrets_manager_client = boto3.client("secretsmanager", region_name="eu-north-1")
-cache_config = SecretCacheConfig()
-secrets_cache = SecretCache(config=cache_config, client=secrets_manager_client)
-secrets = get_secret(secrets_cache)
-
-# Core dependencies
-conversation_api_client = HttpConversationApiClient(conversation_url=secrets.get("conversation_url"))
-resource_manager_api_client = HttpResourceManagerApiClient(source_management_url=secrets.get("resource_manager_url"))
-file_processor = FileProcessorImpl(token=secrets.get("BOT_TOKEN"))
-# Services
-conversation_service = ConversationService(api_client=conversation_api_client)
-channel_service = ChannelService(api_client=resource_manager_api_client)
-# Handlers
-message_handler = MessageHandler(conversation_service=conversation_service, file_processor=file_processor)
-channel_handler = ChannelHandler(channel_service=channel_service)
-# Slack App
-slack_app = App(
-    token=secrets.get("BOT_TOKEN"),
-    signing_secret=secrets.get("SIGNING_SECRET"),
-)

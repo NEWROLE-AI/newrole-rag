@@ -22,14 +22,18 @@ class ChannelHandler:
         if bot_id == event["user"]:
             messages = self._get_channel_messages(client, channel_id)
 
-            messages_with_replies = self._fetch_thread_replies(client, channel_id, messages)
+            messages_with_replies = self._fetch_thread_replies(
+                client, channel_id, messages
+            )
 
             # Transform messages to required format
             formatted_messages = self._format_messages(messages_with_replies)
 
             # Get channel history through Slack API
             self.channel_service.store_channel_history(channel_id, formatted_messages)
-            logger.info("Channel history stored successfully", extra={"channel_id": channel_id})
+            logger.info(
+                "Channel history stored successfully", extra={"channel_id": channel_id}
+            )
             say(
                 "Hi. I've saved the history of the channel and I'm ready to help. Use @bot to contact me"
             )
@@ -42,15 +46,12 @@ class ChannelHandler:
         except Exception as e:
             logger.error(
                 "Failed to fetch channel messages",
-                extra={"channel_id": channel_id, "error": str(e)}
+                extra={"channel_id": channel_id, "error": str(e)},
             )
             raise
 
     def _fetch_thread_replies(
-            self,
-            client,
-            channel_id: str,
-            messages:list[dict[str, Any]]
+        self, client, channel_id: str, messages: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         """Fetch thread replies for messages that have threads."""
         messages_with_replies = []
@@ -68,15 +69,15 @@ class ChannelHandler:
 
                     # Fetch replies for this thread
                     replies = client.conversations_replies(
-                        channel=channel_id,
-                        ts=message["thread_ts"]
+                        channel=channel_id, ts=message["thread_ts"]
                     )
 
                     # Store replies in the message
                     if replies and "messages" in replies:
                         # Remove the parent message from replies as we already have it
                         thread_replies = [
-                            reply for reply in replies["messages"]
+                            reply
+                            for reply in replies["messages"]
                             if reply.get("ts") != message.get("thread_ts")
                         ]
                         message_with_replies["replies"] = thread_replies
@@ -89,8 +90,8 @@ class ChannelHandler:
                     extra={
                         "message_ts": message.get("ts"),
                         "channel_id": channel_id,
-                        "error": str(e)
-                    }
+                        "error": str(e),
+                    },
                 )
                 messages_with_replies.append(message)
                 continue
@@ -107,9 +108,11 @@ class ChannelHandler:
                     "message_id": str(uuid.uuid4()),
                     "content": msg.get("text", ""),
                     "user_id": msg.get("user", ""),
-                    "timestamp": datetime.fromtimestamp(float(msg.get("ts", 0))).isoformat(),
+                    "timestamp": datetime.fromtimestamp(
+                        float(msg.get("ts", 0))
+                    ).isoformat(),
                     "thread_id": msg.get("thread_ts", ""),
-                    "replies": []
+                    "replies": [],
                 }
                 if "replies" in msg:
                     for reply in msg["replies"]:
@@ -117,17 +120,18 @@ class ChannelHandler:
                             "message_id": str(uuid.uuid4()),
                             "content": reply.get("text", ""),
                             "user_id": reply.get("user", ""),
-                            "timestamp": datetime.fromtimestamp(float(reply.get("ts", 0))).isoformat(),
+                            "timestamp": datetime.fromtimestamp(
+                                float(reply.get("ts", 0))
+                            ).isoformat(),
                             "thread_id": reply.get("thread_ts", ""),
-                            "parent_message_id": formatted_message["message_id"]
+                            "parent_message_id": formatted_message["message_id"],
                         }
                         formatted_message["replies"].append(formatted_reply)
 
                 formatted_messages.append(formatted_message)
             except Exception as e:
                 logger.warning(
-                    "Failed to format message",
-                    extra={"message": msg, "error": str(e)}
+                    "Failed to format message", extra={"message": msg, "error": str(e)}
                 )
                 continue
 

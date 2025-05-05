@@ -3,13 +3,21 @@ from urllib.parse import urlparse
 import sqlparse
 from aws_lambda_powertools import Logger
 
-from src.adapters.database.database_clients import PostgreSQLClient, MySQLClient, MsSqlClient
-from src.application.exceptions.value_error_exception import CustomValueError, ErrorStatus
+from src.adapters.database.database_clients import (
+    PostgreSQLClient,
+    MySQLClient,
+    MsSqlClient,
+)
+from src.application.exceptions.value_error_exception import (
+    CustomValueError,
+    ErrorStatus,
+)
 from src.application.ports.database_client import DatabaseClient
 from src.application.ports.database_manager import DatabaseManager, DatabaseType
 
 
 logger = Logger(service="database_manager")
+
 
 class DatabaseManagerImpl(DatabaseManager):
     """
@@ -32,9 +40,13 @@ class DatabaseManagerImpl(DatabaseManager):
         """
         logger.info("Checking database query...")
         parsed = sqlparse.parse(query)
-        if not parsed or not all([statement.get_type() == "SELECT" for statement in parsed]):
-            raise CustomValueError(error_status=ErrorStatus.BAD_REQUEST,
-                                   message="All queries must be a SELECT statement")
+        if not parsed or not all(
+            [statement.get_type() == "SELECT" for statement in parsed]
+        ):
+            raise CustomValueError(
+                error_status=ErrorStatus.BAD_REQUEST,
+                message="All queries must be a SELECT statement",
+            )
         logger.info("Successfully checked database query")
 
     async def check_database_connection(self, connection_params: dict[str, str]):
@@ -56,18 +68,21 @@ class DatabaseManagerImpl(DatabaseManager):
             await client.close()
         except Exception as e:
             logger.error(f"Failed to connect to PostgreSQL database: {str(e)}")
-            raise CustomValueError(error_status=ErrorStatus.BAD_REQUEST, message="Connection to database resource failed")
+            raise CustomValueError(
+                error_status=ErrorStatus.BAD_REQUEST,
+                message="Connection to database resource failed",
+            )
         logger.info("Successfully checked database connection")
 
     def detect_database_type(self, connection_params: dict[str, str]) -> DatabaseType:
         """Detect database type from connection parameters."""
 
         if database_driver := connection_params.get("database_driver", ""):
-            if database_driver == 'POSTGRESQL':
+            if database_driver == "POSTGRESQL":
                 return DatabaseType.POSTGRESQL
-            elif database_driver == 'MYSQL':
+            elif database_driver == "MYSQL":
                 return DatabaseType.MYSQL
-            elif database_driver == 'MSSQL':
+            elif database_driver == "MSSQL":
                 return DatabaseType.MSSQL
 
         # Check for URL/DSN
@@ -99,7 +114,6 @@ class DatabaseManagerImpl(DatabaseManager):
             return DatabaseType.MSSQL
 
         raise ValueError("Could not determine database type from connection parameters")
-
 
     async def create_client(self, connection_params: dict[str, str]) -> DatabaseClient:
         """Create appropriate database client based on connection parameters."""

@@ -93,7 +93,14 @@ class QueryService:
 
         resources_by_kb = {}
         for row in rows:
-            kb_id, resource_id, resource_type, extension, google_drive_url, dynamodb_table_name = row
+            (
+                kb_id,
+                resource_id,
+                resource_type,
+                extension,
+                google_drive_url,
+                dynamodb_table_name,
+            ) = row
             if kb_id not in resources_by_kb:
                 resources_by_kb[kb_id] = {"knowledge_base_id": kb_id, "resources": []}
 
@@ -130,17 +137,9 @@ class QueryService:
                         }
                     )
                 elif resource_type == "GOOGLE_DRIVE":
-                    resource_info.update(
-                        {
-                            "google_drive_url": google_drive_url
-                        }
-                    )
+                    resource_info.update({"google_drive_url": google_drive_url})
                 elif resource_type == "DYNAMODB":
-                    resource_info.update(
-                        {
-                            "dynamodb_table_name": dynamodb_table_name
-                        }
-                    )
+                    resource_info.update({"dynamodb_table_name": dynamodb_table_name})
 
                 resources_by_kb[kb_id]["resources"].append(resource_info)
         return list(resources_by_kb.values())

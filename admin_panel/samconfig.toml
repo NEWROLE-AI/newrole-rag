@@ -1,11 +1,28 @@
 version = 0.1
 [dev.deploy.parameters]
-stack_name = "ai-custom-bot-admin-panel"
+stack_name = "ai-custom-bot-admin-panel-dev"
 resolve_s3 = true
-s3_prefix = "ai-custom-bot-admin-panel"
-region = "eu-north-1"
+s3_prefix = "ai-custom-bot-admin-panel-dev"
+region = "eu-central-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
 disable_rollback = true
 image_repositories = []
-parameter_overrides = "Environment=dev"
+parameter_overrides = [
+  "Environment=dev",
+  "VpcStackName=ai-custom-bot-infr-dev"
+]
+
+[prod.deploy.parameters]
+stack_name = "ai-custom-bot-admin-panel-prod"
+resolve_s3 = true
+s3_prefix = "ai-custom-bot-admin-panel-prod"
+region = "eu-central-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+image_repositories = []
+parameter_overrides = [
+  "Environment=prod",
+  "VpcStackName=ai-custom-bot-infr-prod"
+]

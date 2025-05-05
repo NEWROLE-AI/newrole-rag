@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime, UTC
 
 from aws_lambda_powertools import Logger
@@ -9,7 +10,10 @@ from boto3_type_annotations.dynamodb import Client
 from boto3_type_annotations.secretsmanager import Client as SecretsManagerClient
 
 from src.application.exceptions.domain_exception import DomainException
-from src.application.exceptions.value_error_exception import CustomValueError, ErrorStatus
+from src.application.exceptions.value_error_exception import (
+    CustomValueError,
+    ErrorStatus,
+)
 from src.application.models.knowledge_base import KnowledgeBase
 from src.application.models.resource import Resource, ResourceType
 from src.application.ports.unit_of_work import (
@@ -119,7 +123,8 @@ class SqlResourceRepository(ResourceRepository):
                 f"Knowledge base with ID {resource.knowledge_base_id} not found"
             )
             raise CustomValueError(
-                error_status=ErrorStatus.NOT_FOUND, message=f"Knowledge base with ID {resource.knowledge_base_id} does not exist"
+                error_status=ErrorStatus.NOT_FOUND,
+                message=f"Knowledge base with ID {resource.knowledge_base_id} does not exist",
             )
         knowledge_base_id = row[0]
         # Insert new resource into the database
@@ -149,7 +154,7 @@ class SqlResourceRepository(ResourceRepository):
                     resource.extra.table_name
                     if hasattr(resource.extra, "table_name")
                     else None
-                )
+                ),
             },
         )
         logger.info(f"Resource {resource.resource_id} added successfully")
@@ -184,7 +189,10 @@ class SqlResourceRepository(ResourceRepository):
                 type=ResourceType(row.type),
             )
         else:
-            raise CustomValueError(error_status=ErrorStatus.NOT_FOUND, message=f"Resource with ID {resource_id} not found")
+            raise CustomValueError(
+                error_status=ErrorStatus.NOT_FOUND,
+                message=f"Resource with ID {resource_id} not found",
+            )
 
 
 class SqlKnowledgeBaseRepository(KnowledgeBaseRepository):
@@ -256,7 +264,10 @@ class SqlKnowledgeBaseRepository(KnowledgeBaseRepository):
                 name=row.name,
             )
         else:
-            raise CustomValueError(error_status=ErrorStatus.NOT_FOUND, message=f"Knowledge base with ID {knowledge_base_id} not found")
+            raise CustomValueError(
+                error_status=ErrorStatus.NOT_FOUND,
+                message=f"Knowledge base with ID {knowledge_base_id} not found",
+            )
 
 
 class DynamoSlackChannelRepository(SlackChannelRepository):
@@ -274,8 +285,9 @@ class DynamoSlackChannelRepository(SlackChannelRepository):
             dynamo_client (Client): The DynamoDB client used for accessing the service.
         """
         self._dynamo_client = dynamo_client
+        env = os.environ.get("ENVIRONMENT")
         self._slack_channels = self._dynamo_client.Table(
-            "slack-channel-info-resources-dev"
+            f"slack-channel-info-resources-{env}"
         )
 
     async def save(self, resource: Resource) -> None:

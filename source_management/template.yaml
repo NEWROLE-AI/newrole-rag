@@ -1,12 +1,26 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
+Parameters:
+  Environment:
+    Description: 'Environment (dev or prod)'
+    Type: String
+    AllowedValues:
+      - dev
+      - prod
+    Default: dev
+
+  VpcStackName:
+    Description: 'Name of the VPC stack to import resources from'
+    Type: String
+    Default: ai-custom-bot-infr
+
 Resources:
   ApiGateway:
     Type: AWS::Serverless::Api
     Properties:
-      Name: !Sub "SourceManagementApiGateway-dev"
-      StageName: "test"
+      Name: !Sub "SourceManagementApiGateway-${Environment}"
+      StageName: !Ref Environment
       TracingEnabled: true
       BinaryMediaTypes:
         - "multipart/form-data"
@@ -25,6 +39,7 @@ Resources:
   CreateResourceFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub "CreateResource-${Environment}"
       Handler: src.entrypoints.api.handlers.create_resource
       Runtime: python3.12
       CodeUri: .
@@ -43,7 +58,8 @@ Resources:
         Variables:
           AWS_XRAY_CONTEXT_MISSING: LOG_ERROR
           LOG_LEVEL: INFO
-          ENVIRONMENT: dev
+          ENVIRONMENT: !Sub "${Environment}"
+          REGION: !Sub "${AWS::Region}"
       Tracing: Active
       Events:
         CreateResourceApi:
@@ -54,15 +70,20 @@ Resources:
             Method: POST
       VpcConfig:
         SecurityGroupIds:
-          - sg-0159afa3ca6ce8d06
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-LambdaSGId"
         SubnetIds:
-          - subnet-01a6f0d8ab5654d8e
-          - subnet-0870c5719ed26e6c1
-          - subnet-0544758b0bdeb9cf3
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetC"
 
   GetResourceIdsByKnowledgeBaseIdFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub "GetResourceIdsByKnowledgeBaseId-${Environment}"
       Handler: src.entrypoints.api.handlers.get_resource_ids_by_knowledge_base_id
       Runtime: python3.12
       CodeUri: .
@@ -81,7 +102,8 @@ Resources:
         Variables:
           AWS_XRAY_CONTEXT_MISSING: LOG_ERROR
           LOG_LEVEL: INFO
-          ENVIRONMENT: dev
+          ENVIRONMENT: !Sub "${Environment}"
+          REGION: !Sub "${AWS::Region}"
       Tracing: Active
       Events:
         GetResourceIdsByKnowledgeBaseIdApi:
@@ -92,15 +114,23 @@ Resources:
             Method: GET
       VpcConfig:
         SecurityGroupIds:
-          - sg-0159afa3ca6ce8d06
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-LambdaSGId"
         SubnetIds:
-          - subnet-01a6f0d8ab5654d8e
-          - subnet-0870c5719ed26e6c1
-          - subnet-0544758b0bdeb9cf3
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetC"
+      AutoPublishAlias: !Ref Environment
+      ProvisionedConcurrencyConfig:
+        ProvisionedConcurrentExecutions: 5
 
   GetAllResourcesFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub "GetAllResources-${Environment}"
       Handler: src.entrypoints.api.handlers.get_all_resources
       Runtime: python3.12
       CodeUri: .
@@ -119,7 +149,8 @@ Resources:
         Variables:
           AWS_XRAY_CONTEXT_MISSING: LOG_ERROR
           LOG_LEVEL: INFO
-          ENVIRONMENT: dev
+          ENVIRONMENT: !Sub "${Environment}"
+          REGION: !Sub "${AWS::Region}"
       Tracing: Active
       Events:
         GetAllResourcesApi:
@@ -130,15 +161,20 @@ Resources:
             Method: GET
       VpcConfig:
         SecurityGroupIds:
-          - sg-0159afa3ca6ce8d06
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-LambdaSGId"
         SubnetIds:
-          - subnet-01a6f0d8ab5654d8e
-          - subnet-0870c5719ed26e6c1
-          - subnet-0544758b0bdeb9cf3
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetC"
 
   CreateKnowledgeBaseFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub "CreateKnowledgeBase-${Environment}"
       Handler: src.entrypoints.api.handlers.create_knowledge_base
       Runtime: python3.12
       CodeUri: .
@@ -157,7 +193,8 @@ Resources:
         Variables:
           AWS_XRAY_CONTEXT_MISSING: LOG_ERROR
           LOG_LEVEL: INFO
-          ENVIRONMENT: dev
+          ENVIRONMENT: !Sub "${Environment}"
+          REGION: !Sub "${AWS::Region}"
       Tracing: Active
       Events:
         CreateKnowledgeBaseApi:
@@ -168,8 +205,12 @@ Resources:
             Method: POST
       VpcConfig:
         SecurityGroupIds:
-          - sg-0159afa3ca6ce8d06
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-LambdaSGId"
         SubnetIds:
-          - subnet-01a6f0d8ab5654d8e
-          - subnet-0870c5719ed26e6c1
-          - subnet-0544758b0bdeb9cf3
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetC"

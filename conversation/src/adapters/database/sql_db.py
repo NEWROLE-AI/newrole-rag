@@ -35,3 +35,19 @@ async def get_session(
     """
     async with session_maker() as session:
         yield session
+
+
+async def get_custom_session(
+    session_maker: async_sessionmaker[AsyncSession],
+) -> AsyncGenerator[AsyncSession, None]:
+    """
+    Creates an asynchronous session from the session maker.
+
+    Args:
+        session_maker (async_sessionmaker[AsyncSession]): The session maker.
+
+    Yields:
+        AsyncSession: The database session.
+    """
+    async with session_maker() as session:
+        yield session

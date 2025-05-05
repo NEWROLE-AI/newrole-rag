@@ -6,7 +6,10 @@ from aws_lambda_powertools import Logger
 from src.application.command_handlers.base import BaseCommandHandler
 from src.application.commands.create_resource import CreateResourceCommand
 from src.application.exceptions.domain_exception import DomainException
-from src.application.exceptions.value_error_exception import CustomValueError, ErrorStatus
+from src.application.exceptions.value_error_exception import (
+    CustomValueError,
+    ErrorStatus,
+)
 from src.application.models.resource import (
     ResourceType,
     Resource,
@@ -14,7 +17,8 @@ from src.application.models.resource import (
     SlackMessage,
     File,
     Database,
-    GoogleDrive, DynamodbTable,
+    GoogleDrive,
+    DynamodbTable,
 )
 from src.application.ports.database_manager import DatabaseManager
 from src.application.ports.dynaodb_client import DynamodbClient
@@ -40,7 +44,14 @@ class CreateResourceCommandHandler(BaseCommandHandler):
         _handlers (dict): A mapping of resource types to specific handlers.
     """
 
-    def __init__(self, unit_of_work: UnitOfWork, storage_manager: StorageManager, google_drive_api_client: GoogleDriveClient, data_base_manager: DatabaseManager, dynamodb_client: DynamodbClient):
+    def __init__(
+        self,
+        unit_of_work: UnitOfWork,
+        storage_manager: StorageManager,
+        google_drive_api_client: GoogleDriveClient,
+        data_base_manager: DatabaseManager,
+        dynamodb_client: DynamodbClient,
+    ):
         """
         Initializes the resource creation handler with dependencies.
 
@@ -183,7 +194,9 @@ class CreateResourceCommandHandler(BaseCommandHandler):
         """
         logger.info("Start create database resource")
         await self._database_manager.check_query(command.query)
-        await self._database_manager.check_database_connection(command.connection_params)
+        await self._database_manager.check_database_connection(
+            command.connection_params
+        )
 
         async with self._unit_of_work as uow:
             knowledge_base = await uow.knowledge_bases.get(command.knowledge_base_id)
@@ -220,7 +233,9 @@ class CreateResourceCommandHandler(BaseCommandHandler):
         logger.info("Start create database resource")
 
         if command.google_drive_url:
-            await self._google_drive_api_client.check_google_drive(command.google_drive_url)
+            await self._google_drive_api_client.check_google_drive(
+                command.google_drive_url
+            )
 
         async with self._unit_of_work as uow:
             knowledge_base = await uow.knowledge_bases.get(command.knowledge_base_id)

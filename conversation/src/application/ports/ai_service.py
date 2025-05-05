@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 from src.application.models.agent_chat_bot import Prompt
 from src.application.models.conversation import Message
@@ -17,7 +18,14 @@ class AIService(ABC):
     async def generate_response(
         self,
         prompt: Prompt,
-        vectorized_knowledge_base: VectorizedKnowledge,
+        vectorized_knowledge_base: list[dict],
         messages: list[Message],
+    ) -> tuple[str, dict[str, Any]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def generate_sql_response(
+        self,
+        query: str
     ) -> str:
         raise NotImplementedError

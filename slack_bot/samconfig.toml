@@ -1,11 +1,28 @@
 version = 0.1
 [dev.deploy.parameters]
-stack_name = "ai-custom-bot-slack"
+stack_name = "ai-custom-bot-slack-dev"
 resolve_s3 = true
-s3_prefix = "ai-custom-bot-slack"
-region = "eu-north-1"
+s3_prefix = "ai-custom-bot-slack-dev"
+region = "eu-central-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-disable_rollback = true
+disable_rollback = false
 image_repositories = []
-parameter_overrides = "Environment=dev"
+parameter_overrides = [
+  "Environment=dev",
+  "VpcStackName=ai-custom-bot-infr-dev"
+]
+
+[prod.deploy.parameters]
+stack_name = "ai-custom-bot-slack-prod"
+resolve_s3 = true
+s3_prefix = "ai-custom-bot-slack-prod"
+region = "eu-central-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = false
+image_repositories = []
+parameter_overrides = [
+  "Environment=prod",
+  "VpcStackName=ai-custom-bot-infr-prod"
+]

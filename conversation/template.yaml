@@ -1,12 +1,27 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
+Parameters:
+  Environment:
+    Description: 'Environment (dev or prod)'
+    Type: String
+    AllowedValues:
+      - dev
+      - prod
+    Default: dev
+
+  VpcStackName:
+    Description: 'Name of the VPC stack to import resources from'
+    Type: String
+    Default: ai-custom-bot-infr
+
+
 Resources:
   ApiGateway:
     Type: AWS::Serverless::Api
     Properties:
       Name: !Sub "ConversationApiGateway-dev"
-      StageName: "test"
+      StageName: !Ref Environment
       TracingEnabled: true
       BinaryMediaTypes:
         - "multipart/form-data"
@@ -15,6 +30,7 @@ Resources:
   CreateConversationFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub "CreateConversation-${Environment}"
       Handler: src.entrypoints.api.handlers.create_conversation
       Runtime: python3.12
       CodeUri: .
@@ -31,7 +47,8 @@ Resources:
         Variables:
           AWS_XRAY_CONTEXT_MISSING: LOG_ERROR
           LOG_LEVEL: INFO
-          ENVIRONMENT: dev
+          ENVIRONMENT: !Sub "${Environment}"
+          REGION: !Sub "${AWS::Region}"
       Tracing: Active
       Events:
         CreateConversationApi:
@@ -42,19 +59,25 @@ Resources:
             Method: POST
       VpcConfig:
         SecurityGroupIds:
-          - sg-0159afa3ca6ce8d06
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-LambdaSGId"
         SubnetIds:
-          - subnet-01a6f0d8ab5654d8e
-          - subnet-0870c5719ed26e6c1
-          - subnet-0544758b0bdeb9cf3
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetC"
 
   ConversationFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub "Conversation-${Environment}"
       Handler: src.entrypoints.api.handlers.conversation
       Runtime: python3.12
       CodeUri: .
       Timeout: 30
+      MemorySize: 256
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSLambda_ReadOnlyAccess
@@ -67,7 +90,8 @@ Resources:
         Variables:
           AWS_XRAY_CONTEXT_MISSING: LOG_ERROR
           LOG_LEVEL: INFO
-          ENVIRONMENT: dev
+          ENVIRONMENT: !Sub "${Environment}"
+          REGION: !Sub "${AWS::Region}"
       Tracing: Active
       Events:
         ConversationApi:
@@ -78,8 +102,15 @@ Resources:
             Method: POST
       VpcConfig:
         SecurityGroupIds:
-          - sg-0159afa3ca6ce8d06
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-LambdaSGId"
         SubnetIds:
-          - subnet-01a6f0d8ab5654d8e
-          - subnet-0870c5719ed26e6c1
-          - subnet-0544758b0bdeb9cf3
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetC"
+      AutoPublishAlias: !Ref Environment
+      ProvisionedConcurrencyConfig:
+        ProvisionedConcurrentExecutions: 5

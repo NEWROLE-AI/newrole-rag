@@ -18,7 +18,7 @@ def get_database_url():
     if not database_url:
         session = boto3.session.Session()
         secrets_manager = session.client(
-            service_name="secretsmanager", region_name="eu-north-1"
+        service_name="secretsmanager", region_name="eu-central-1"
         )
         info_admin_panel = json.loads(
             secrets_manager.get_secret_value(SecretId="dev/ai-custom-bot/admin-panel")[

@@ -1,0 +1,504 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VPC Template with public and private subnets across 3 AZs'
+
+
+Parameters:
+  RDSMasterPassword:
+    Description: 'Master password for the RDS instance'
+    Type: String
+    NoEcho: true
+    MinLength: "8"
+    MaxLength: "41"
+    AllowedPattern: '[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};:\\|,.<>\/?]*'
+    ConstraintDescription: 'Password must be between 8 and 41 characters and contain only alphanumeric characters.'
+    Default: "sB*WX6+fyo{:E+7PLAE8pcPjVmyZ"
+
+  Region:
+    Description: 'AWS Region'
+    Type: String
+    Default: eu-central-1
+
+  Environment:
+    Description: 'Environment (dev or prod)'
+    Type: String
+    AllowedValues:
+      - dev
+      - prod
+    Default: dev
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 172.31.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub ai-custom-bot-vpc-${Environment}
+
+  # Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ai-custom-bot-ig-${Environment}
+
+  AttachInternetGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  # Public Subnets
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 172.31.16.0/20
+      AvailabilityZone: !Sub "${Region}a"
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ai-custom-bot-subnet-ig-a-${Environment}
+
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 172.31.32.0/20
+      AvailabilityZone: !Sub "${Region}b"
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ai-custom-bot-subnet-ig-b-${Environment}
+
+  PublicSubnetC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 172.31.0.0/20
+      AvailabilityZone: !Sub "${Region}c"
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ai-custom-bot-subnet-ig-c-${Environment}
+
+  # Private Subnets
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 172.31.48.0/20
+      AvailabilityZone: !Sub "${Region}a"
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ai-custom-bot-subnet-nat-a-${Environment}
+
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 172.31.64.0/20
+      AvailabilityZone: !Sub "${Region}b"
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ai-custom-bot-subnet-nat-b-${Environment}
+
+  PrivateSubnetC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 172.31.80.0/20
+      AvailabilityZone: !Sub "${Region}c"
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ai-custom-bot-subnet-nat-c-${Environment}
+
+  # Public Route Table
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ai-custom-bot-route-table-ig-${Environment}
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachInternetGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetB
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetCRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetC
+      RouteTableId: !Ref PublicRouteTable
+
+  # NAT Gateway
+  NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnetA
+      Tags:
+        - Key: Name
+          Value: ai-custom-bot-nat-gateway
+
+  # Private Route Table
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ai-custom-bot-route-table-nat-${Environment}
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetA
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetB
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetCRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetC
+      RouteTableId: !Ref PrivateRouteTable
+
+  # VPC Endpoints
+  S3Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcId: !Ref VPC
+      RouteTableIds:
+        - !Ref PrivateRouteTable
+        - !Ref PublicRouteTable
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - 's3:*'
+            Resource: '*'
+
+  DynamoDBEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.dynamodb
+      VpcId: !Ref VPC
+      RouteTableIds:
+        - !Ref PrivateRouteTable
+        - !Ref PublicRouteTable
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - 'dynamodb:*'
+            Resource: '*'
+
+
+  RDSAccessSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: RDS Access Security Group
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: "-1"  # Allow all outbound traffic
+      SecurityGroupIngress:
+        # Inbound rule for PostgreSQL (port 5432) from LambdaSG
+        - SourceSecurityGroupId: !Ref LambdaSG  # LambdaSG
+          IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          Description: Allow RDS PostgreSQL access from LambdaSG
+        # Inbound rule for PostgreSQL (port 5432) from specific IP (34.118.22.54/32)
+        - CidrIp: 34.118.22.54/32
+          IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          Description: Allow PostgreSQL access from specific IP (34.118.22.54/32)
+
+
+  LaunchWizard1SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EC2 Launch Wizard Security Group
+      GroupName: launch-wizard-1
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: "-1" # Allow all outbound traffic
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          Description: Allow HTTP access from anywhere
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          Description: Allow SSH access from anywhere
+
+  DatabaseSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Database security group
+      GroupName: DatabaseSG
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: "-1"  # Allow all outbound traffic
+      SecurityGroupIngress:
+        # Inbound rules for PostgreSQL on port 5432 from LambdaSG
+        - SourceSecurityGroupId: !Ref LambdaSG  # LambdaSG
+          IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          Description: Allow PostgreSQL access from LambdaSG
+        # Inbound rule for Custom TCP port 8182 from LambdaSG
+        - SourceSecurityGroupId: !Ref LambdaSG  # LambdaSG
+          IpProtocol: tcp
+          FromPort: 8182
+          ToPort: 8182
+          Description: Allow access on port 8182 from LambdaSG
+
+  LambdaSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Lambda security group
+      GroupName: LambdaSG
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: "-1"  # Allow all outbound traffic
+      SecurityGroupIngress:
+        # Allow all traffic from Lambda instances
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: "tcp"
+          FromPort: 0
+          ToPort: 65535
+          Description: Allow all traffic from Lambda
+
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: "Subnet group for RDS instance"
+      SubnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+        - !Ref PrivateSubnetC
+      Tags:
+        - Key: Name
+          Value: ai-custom-bot-rds-subnet-group
+
+  RDSIgSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: "Subnet group for RDS instance"
+      SubnetIds:
+        - !Ref PublicSubnetA
+        - !Ref PublicSubnetB
+        - !Ref PublicSubnetC
+      Tags:
+        - Key: Name
+          Value: ai-custom-bot-rds-subnet-group
+
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub ai-custom-bot-${Environment}
+      AllocatedStorage: "20"
+      DBInstanceClass: db.t3.small
+      Engine: postgres
+      EngineVersion: '16.3'
+      MasterUsername: postgres
+      MasterUserPassword: !Ref RDSMasterPassword
+      VPCSecurityGroups:
+        - !Ref RDSAccessSecurityGroup
+        - !Ref DatabaseSG
+        - !Ref LambdaSG
+        - !Ref LaunchWizard1SecurityGroup
+      DBSubnetGroupName: !Ref RDSIgSubnetGroup
+      PubliclyAccessible: true
+      MultiAZ: false
+      AvailabilityZone: !Sub "${Region}a"
+      StorageType: gp3
+      StorageEncrypted: true
+      BackupRetentionPeriod: 7
+      PerformanceInsightsKMSKeyId: aws/rds
+      DeletionProtection: false
+      Tags:
+        - Key: Name
+          Value: ai-custom-bot-rds
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ai-custom-bot-store-static-files-${Environment}
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - PUT
+              - GET
+            AllowedOrigins:
+              - "*"
+      Tags:
+        - Key: Name
+          Value: !Sub ai-custom-bot-s3-bucket-${Environment}
+
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: "s3:GetObject"
+            Resource: !Sub "arn:aws:s3:::${S3Bucket}/*"
+
+  ConversationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub Conversations-${Environment}
+      AttributeDefinitions:
+        - AttributeName: conversation_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: conversation_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Name
+          Value: ai-custom-bot-conversations-table
+
+  SlackChannelInfoResourcesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub slack-channel-info-resources-${Environment}
+      AttributeDefinitions:
+        - AttributeName: resource_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: resource_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Name
+          Value: ai-custom-bot-slack-channel-info-resources-table
+
+
+Outputs:
+  VpcId:
+    Description: VPC ID
+    Value: !Ref VPC
+    Export:
+      Name: !Sub "${AWS::StackName}-VpcId"
+
+  PrivateSubnetA:
+    Value: !Ref PrivateSubnetA
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnetA"
+
+  PrivateSubnetB:
+    Value: !Ref PrivateSubnetB
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnetB"
+
+  PrivateSubnetC:
+    Value: !Ref PrivateSubnetC
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnetC"
+
+  PublicSubnets:
+    Description: Public Subnets IDs
+    Value: !Join [",", [!Ref PublicSubnetA, !Ref PublicSubnetB, !Ref PublicSubnetC]]
+
+  PrivateSubnets:
+    Description: Private Subnets IDs
+    Value: !Join [",", [!Ref PrivateSubnetA, !Ref PrivateSubnetB, !Ref PrivateSubnetC]]
+
+  RDSAccessSecurityGroupId:
+    Description: RDSAccessSecurityGroup ID
+    Value: !Ref RDSAccessSecurityGroup
+
+  LaunchWizard1SecurityGroupId:
+    Description: LaunchWizard1SecurityGroup ID
+    Value: !Ref LaunchWizard1SecurityGroup
+
+  DatabaseSGId:
+    Description: DatabaseSG ID
+    Value: !Ref DatabaseSG
+
+  LambdaSGId:
+    Description: LambdaSG ID
+    Value: !Ref LambdaSG
+    Export:
+      Name: !Sub "${AWS::StackName}-LambdaSGId"
+
+  S3BucketName:
+    Description: S3 Bucket Name
+    Value: !Ref S3Bucket

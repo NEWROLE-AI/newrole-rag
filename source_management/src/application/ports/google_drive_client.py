@@ -7,6 +7,7 @@ class GoogleDriveClient(ABC):
 
     Defines the contract for calls to google drive
     """
+
     @abstractmethod
     def check_google_drive(self, google_drive_url: str) -> None:
         """

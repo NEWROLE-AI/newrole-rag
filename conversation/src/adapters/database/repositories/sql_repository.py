@@ -56,7 +56,9 @@ class SqlAgentChatBotRepository(AgentChatBotRepository):
             SELECT * FROM prompts WHERE id = :id
             """
         )
-        prompt_result = await self._session.execute(prompt_query, {"id": agent_row.id})
+        prompt_result = await self._session.execute(
+            prompt_query, {"id": agent_row.prompt_id}
+        )
         prompt_row = prompt_result.fetchone()
         if not agent_row:
             raise ValueError(f"AgentChatBot with ID {agent_chat_bot_id} not found")

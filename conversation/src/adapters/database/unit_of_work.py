@@ -1,10 +1,11 @@
 from aws_lambda_powertools import Logger
 from opensearchpy import AsyncOpenSearch
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from boto3_type_annotations.dynamodb import Client
 from src.adapters.database.repositories.sql_repository import SqlAgentChatBotRepository
 from src.adapters.database.repositories.dynamo_repository import (
-    DynamoConversationRepository,
+    DynamoConversationRepository, DynamoBackgroundCheckRepository
 )
 from src.adapters.database.repositories.opensearch_repository import (
     OpensearchVectorizedKnowledgeRepository,
@@ -30,10 +31,12 @@ class UnitOfWorkImpl(UnitOfWork):
     vectorized_knowledge: OpensearchVectorizedKnowledgeRepository
     agent_chat_bots: SqlAgentChatBotRepository
     conversations: DynamoConversationRepository
+    background_checks: DynamoBackgroundCheckRepository
 
     def __init__(
         self,
         session: AsyncSession,
+        session_custom: AsyncSession,
         opensearch_client: AsyncOpenSearch,
         dynamo_client: Client,
         knn_parameter: int,
@@ -47,6 +50,7 @@ class UnitOfWorkImpl(UnitOfWork):
             dynamo_client (Client): The DynamoDB client for conversation management.
         """
         self._session = session
+        self._session_custom = session_custom
         self._opensearch_client = opensearch_client
         self._dynamo_client = dynamo_client
         self._knn_parameter = knn_parameter
@@ -68,6 +72,7 @@ class UnitOfWorkImpl(UnitOfWork):
             self._opensearch_client, self._knn_parameter
         )
         self.conversations = DynamoConversationRepository(self._dynamo_client)
+        self.background_checks = DynamoBackgroundCheckRepository(self._dynamo_client)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -84,3 +89,17 @@ class UnitOfWorkImpl(UnitOfWork):
         self.agent_chat_bots = None  # type: ignore
         self.vectorized_knowledge = None  # type: ignore
         self.conversations = None  # type: ignore
+
+    async def execute(self, query: str) -> list[dict]:
+        try:
+            result = await self._session_custom.execute(text(query))
+
+            # Convert the result to a list of dictionaries
+            columns = result.keys()
+            res = [dict(zip(columns, row)) for row in result.fetchall()]
+            logger.info(res)
+            return res
+        except Exception as e:
+            logger.info(e)
+            logger.info("Error while collecting data")
+            return "Error while collecting data"
