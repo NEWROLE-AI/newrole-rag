@@ -1,0 +1,51 @@
+version: "3"
+services:
+  vectorization-app:
+    build:
+      context: vectorization_core
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_DEFAULT_REGION=${AWS_REGION}
+      - ENVIRONMENT=${ENVIRONMENT}
+    volumes:
+      - ./vectorization_core:/app
+    networks:
+      - app-network
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: "/docker/dev/vectorization_core"
+        awslogs-region: ${AWS_REGION}
+        awslogs-create-group: "true"
+
+  slack-bot:
+    build:
+      context: slack_bot
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_DEFAULT_REGION=${AWS_REGION}
+      - ENVIRONMENT=${ENVIRONMENT}
+    volumes:
+      - ./slack_bot:/app
+    networks:
+      - app-network
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: "/docker/dev/slack_bot"
+        awslogs-region: ${AWS_REGION}
+        awslogs-create-group: "true"
+
+networks:
+  app-network:
+    driver: bridge

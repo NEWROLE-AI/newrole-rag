@@ -1,0 +1,11 @@
+version = 0.1
+[dev.deploy.parameters]
+stack_name = "ai-custom-bot-conversation"
+resolve_s3 = true
+s3_prefix = "ai-custom-bot-admin-conversation"
+region = "eu-north-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+image_repositories = []
+parameter_overrides = "Environment=dev"
