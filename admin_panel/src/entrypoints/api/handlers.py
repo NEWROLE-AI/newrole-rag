@@ -18,7 +18,7 @@ from src.application.commands.create_prompt import CreatePromptCommand
 from src.application.commands.update_prompt_text import UpdatePromptTextCommand
 from src.entrypoints.api.middleware.utils import lambda_handler_decorator
 from src.entrypoints.api.models import api_models
-from src.entrypoints.api.ioc import Container
+from src.entrypoints.api.ioc import AwsContainer
 
 logger = Logger("handlers")
 
@@ -28,7 +28,7 @@ logger = Logger("handlers")
 async def create_prompt(
     request: api_models.CreatePromptRequest,
     handler: CreatePromptCommandHandler = Closing[
-        Provide[Container.create_prompt_handler]
+        Provide[AwsContainer.create_prompt_handler]
     ],
 ) -> api_models.CreatePromptResponse:
     """
@@ -65,7 +65,7 @@ async def create_prompt(
 async def create_agent_chat_bot(
     request: api_models.CreateAgentChatBotRequest,
     handler: CreateAgentChatBotCommandHandler = Closing[
-        Provide[Container.create_agent_chat_bot_handler]
+        Provide[AwsContainer.create_agent_chat_bot_handler]
     ],
 ) -> api_models.CreateAgentChatBotResponse:
     """
@@ -103,7 +103,7 @@ async def create_agent_chat_bot(
 async def change_settings_agent_chat_bot(
     request: api_models.ChangeSettingsAgentChatBotRequest,
     handler: ChangeSettingsAgentChatBotCommandHandler = Closing[
-        Provide[Container.change_settings_agent_chat_bot_handler]
+        Provide[AwsContainer.change_settings_agent_chat_bot_handler]
     ],
 ) -> api_models.ChangeSettingsAgentChatBotResponse:
     """
@@ -137,7 +137,7 @@ async def change_settings_agent_chat_bot(
 async def update_prompt_text(
     request: api_models.UpdatePromptTextRequest,
     handler: UpdatePromptTextCommandHandler = Closing[
-        Provide[Container.update_prompt_text_handler]
+        Provide[AwsContainer.update_prompt_text_handler]
     ],
 ) -> api_models.UpdatePromptTextResponse:
     """
@@ -166,5 +166,5 @@ async def update_prompt_text(
     return response
 
 
-container = Container()
+container = AwsContainer()
 container.wire(modules=[__name__])
