@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 
 class ResourceType(str, Enum):
@@ -130,9 +131,9 @@ class DynamodbTable:
     table_name: str
 
 
-RESOURCE_TYPE_MAP: Dict[str, Type] = {
+RESOURCE_TYPE_MAP: dict[str, type] = {
     ResourceType.SLACK_CHANNEL.value: SlackChannel,
-    ResourceType.FILE.value: File,
+    ResourceType.STATIC_FILE.value: File,
     ResourceType.DATABASE.value: Database,
     ResourceType.GOOGLE_DRIVE.value: GoogleDrive,
     ResourceType.DYNAMODB_TABLE.value: DynamodbTable,

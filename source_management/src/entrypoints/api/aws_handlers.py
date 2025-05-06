@@ -10,8 +10,7 @@ from src.application.command_handlers.create_resource import (
 )
 from src.application.commands.create_knowledge_base import CreateKnowledgeBaseCommand
 from src.application.commands.create_resource import CreateResourceCommand
-from src.application.models.resource import ResourceType
-from src.entrypoints.api.ioc import Container
+from src.entrypoints.api.ioc import AwsContainer
 from src.entrypoints.api.middleware.utils import lambda_handler_decorator
 from src.entrypoints.api.models import api_models
 
@@ -21,7 +20,7 @@ from src.entrypoints.api.models import api_models
 async def create_resource(
     request: api_models.CreateResourceRequest,
     handler: CreateResourceCommandHandler = Closing[
-        Provide[Container.create_resource_handler]
+        Provide[AwsContainer.create_resource_handler]
     ],
 ) -> api_models.CreateResourceResponse:
     """
@@ -57,7 +56,7 @@ async def create_resource(
 async def create_knowledge_base(
     request: api_models.CreateKnowledgeBaseRequest,
     handler: CreateKnowledgeBaseCommandHandler = Closing[
-        Provide[Container.create_knowledge_base_handler]
+        Provide[AwsContainer.create_knowledge_base_handler]
     ],
 ) -> api_models.CreateKnowledgeBaseResponse:
     """
@@ -92,7 +91,7 @@ async def create_knowledge_base(
 @inject
 async def get_resource_ids_by_knowledge_base_id(
     request: api_models.GetResourceIdsByKnowledgeBaseRequest,
-    query_service: QueryService = Closing[Provide[Container.query_service]],
+    query_service: QueryService = Closing[Provide[AwsContainer.query_service]],
 ) -> api_models.GetResourceIdsByKnowledgeBaseResponse:
     """
     AWS Lambda handler for retrieving all resource IDs associated with a knowledge base.
@@ -122,7 +121,7 @@ async def get_resource_ids_by_knowledge_base_id(
 @inject
 async def get_all_resources(
     request: api_models.GetAllResourcesRequest,
-    query_service: QueryService = Closing[Provide[Container.query_service]],
+    query_service: QueryService = Closing[Provide[AwsContainer.query_service]],
 ) -> api_models.GetAllResourcesResponse:
     """
     AWS Lambda handler for retrieving all resources.
@@ -147,5 +146,5 @@ async def get_all_resources(
 
 # Initializing the logger and dependency container
 logger = Logger("handlers")
-container = Container()
+container = AwsContainer()
 container.wire(modules=[__name__])

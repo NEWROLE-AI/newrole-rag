@@ -23,6 +23,7 @@ google = "^3.0.0"
 sqlparse = "^0.5.3"
 aiomysql = "^0.2.0"
 aioodbc = "^0.5.0"
+fastapi = "^0.115.12"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.10.0"
