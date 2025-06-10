@@ -2,6 +2,7 @@ import json
 import os
 import traceback
 
+import aiohttp
 import boto3
 import httplib2
 from boto3 import client as boto3_client
@@ -11,20 +12,29 @@ from dependency_injector import providers, containers
 from google.oauth2 import service_account
 from google_auth_httplib2 import AuthorizedHttp
 from googleapiclient.discovery import build as google_client
+from opensearchpy import AsyncOpenSearch
 
 from src.adapters.database.db import get_session_maker, get_session
 from src.adapters.database_manager import DatabaseManagerImpl
 from src.adapters.dynamodb_client import DynamoDbClientImpl
 from src.adapters.google_drive_api_client import ApiGoogleDriveClient
+from src.adapters.opensearch_service import OpensearchVectorizedKnowledgeService
 from src.adapters.query_service import QueryService
+from src.adapters.realtime_api_service import IoHttpRealtimeApiService
+from src.adapters.realtime_database_service import PostgresRealtimeDatabaseService, MySqlRealtimeDatabaseService
 from src.adapters.s3_storage_manager import S3StorageManager
 from src.adapters.unit_of_work import UnitOfWorkImpl
+from src.adapters.vectorized_service import HttpVectorizedService
 from src.application.command_handlers.create_knowledge_base import (
     CreateKnowledgeBaseCommandHandler,
 )
-from src.application.command_handlers.create_resource import (
-    CreateResourceCommandHandler,
+from src.application.command_handlers.create_realtime_resource import CreateRealtimeResourceCommandHandler
+from src.application.command_handlers.create_vectorized_resource import (
+    CreateVectorizedResourceCommandHandler,
 )
+from src.application.command_handlers.get_realtime_data import GetRealtimeDataCommandHandler
+from src.application.command_handlers.get_vectorized_data import GetVectorizedDataCommandHandler
+from src.application.models.realtime_resource import DbType
 
 logger = Logger(service="ioc")
 
@@ -126,7 +136,7 @@ class AwsContainer(containers.DeclarativeContainer):
         bucket_name=secrets.get("s3_bucket_name"),
     )
 
-    data_base_manager = providers.Factory(DatabaseManagerImpl)
+    database_manager = providers.Factory(DatabaseManagerImpl)
 
     unit_of_work = providers.Singleton(
         UnitOfWorkImpl,
@@ -143,11 +153,11 @@ class AwsContainer(containers.DeclarativeContainer):
     )
 
     create_resource_handler = providers.Singleton(
-        CreateResourceCommandHandler,
+        CreateVectorizedResourceCommandHandler,
         unit_of_work=unit_of_work,
         storage_manager=storage_manager,
         google_drive_api_client=google_drive_api_client,
-        data_base_manager=data_base_manager,
+        data_base_manager=database_manager,
         dynamodb_client=dynamodb_client,
     )
 
@@ -156,6 +166,77 @@ class AwsContainer(containers.DeclarativeContainer):
         sql_session=db_session_factory,
         dynamo_client=dynamo_client,
         secrets_manager_client=secrets_client,
+    )
+
+    http_session = providers.Singleton(
+        aiohttp.ClientSession
+    )
+
+    api_service = providers.Singleton(
+        IoHttpRealtimeApiService,
+        session=http_session
+    )
+
+    create_realtime_resource_handler = providers.Singleton(
+        CreateRealtimeResourceCommandHandler,
+        unit_of_work=unit_of_work,
+        database_manager=database_manager,
+    )
+
+    http_session = providers.Singleton(
+        aiohttp.ClientSession,
+    )
+
+    vectorize_service = providers.Singleton(
+        HttpVectorizedService,
+        secrets.get("base_url"),
+        session=http_session,
+    )
+
+    elastic_search_client = providers.Singleton(
+        AsyncOpenSearch,
+        hosts=[secrets.get("opensearch_host")],
+        http_auth=(
+            secrets.get("opensearch_username"),
+            secrets.get("opensearch_password"),
+        ),
+        verify_certs=True,
+        timeout=60,
+        max_retries=10,
+        retry_on_timeout=True,
+    )
+
+    vectorized_knowledge_service = providers.Singleton(
+        OpensearchVectorizedKnowledgeService,
+        client=elastic_search_client,
+        knn_parameter=25,
+    )
+
+    get_vectorized_data_service = providers.Singleton(
+        GetVectorizedDataCommandHandler,
+        unit_of_work=unit_of_work,
+        vectorize_service=vectorize_service,
+        vectorized_knowledge_service=vectorized_knowledge_service,
+    )
+    postgresql_handler = providers.Singleton(
+        PostgresRealtimeDatabaseService
+    )
+
+    mysql_handler = providers.Singleton(
+            MySqlRealtimeDatabaseService
+    )
+
+    db_handlers = providers.Dict({
+        DbType.POSTGRESQL: postgresql_handler,
+        DbType.MYSQL: mysql_handler,
+    })
+
+    get_realtime_data_service = providers.Singleton(
+        GetRealtimeDataCommandHandler,
+        unit_of_work=unit_of_work,
+        api_service=api_service,
+        db_handlers=db_handlers,
+        database_manager=database_manager,
     )
 
     logger.info("Initialized Container complete")
@@ -187,11 +268,11 @@ class FastapiContainer(containers.DeclarativeContainer):
 
     secrets_client = ()
 
-    # Google Drive client configuration
-    google_credentials = service_account.Credentials.from_service_account_info(
-        json.loads((secrets.get("google_drive_credentials"))),
-        scopes=["https://www.googleapis.com/auth/drive.readonly"],
-    )
+    # # Google Drive client configuration
+    # google_credentials = service_account.Credentials.from_service_account_info(
+    #     json.loads((secrets.get("google_drive_credentials"))),
+    #     scopes=["https://www.googleapis.com/auth/drive.readonly"],
+    # )
 
     google_drive_client = providers.Singleton(
         google_client,
@@ -234,7 +315,7 @@ class FastapiContainer(containers.DeclarativeContainer):
     )
 
     create_resource_handler = providers.Singleton(
-        CreateResourceCommandHandler,
+        CreateVectorizedResourceCommandHandler,
         unit_of_work=unit_of_work,
         storage_manager=storage_manager,
         google_drive_api_client=google_drive_api_client,

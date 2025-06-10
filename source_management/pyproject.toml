@@ -24,6 +24,9 @@ sqlparse = "^0.5.3"
 aiomysql = "^0.2.0"
 aioodbc = "^0.5.0"
 fastapi = "^0.115.12"
+aiohttp = "^3.12.9"
+opensearch-py = "^2.8.0"
+click = "^8.2.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.10.0"

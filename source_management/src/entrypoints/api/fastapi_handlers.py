@@ -3,9 +3,9 @@ from dependency_injector.wiring import Closing, Provide, inject
 
 from src.adapters.query_service import QueryService
 from src.application.command_handlers.create_knowledge_base import CreateKnowledgeBaseCommandHandler
-from src.application.command_handlers.create_resource import CreateResourceCommandHandler
+from src.application.command_handlers.create_vectorized_resource import CreateVectorizedResourceCommandHandler
 from src.application.commands.create_knowledge_base import CreateKnowledgeBaseCommand
-from src.application.commands.create_resource import CreateResourceCommand
+from src.application.commands.create_vectorized_resource import CreateVectorizedResourceCommand
 from src.entrypoints.api.ioc import FastapiContainer
 from src.entrypoints.api.models import api_models
 
@@ -19,7 +19,7 @@ from fastapi import Depends
 @inject
 async def create_resource(
     request: api_models.CreateResourceRequest,
-    handler: CreateResourceCommandHandler = Depends(
+    handler: CreateVectorizedResourceCommandHandler = Depends(
         Provide[FastapiContainer.create_resource_handler]
     ),
 ) -> api_models.CreateResourceResponse:
@@ -28,7 +28,7 @@ async def create_resource(
 
     Args:
         request (CreateResourceRequest): Contains knowledge_base_id, resource_type and optional file_type
-        handler (CreateResourceCommandHandler): Injected handler for resource creation
+        handler (CreateVectorizedResourceCommandHandler): Injected handler for resource creation
 
     Returns:
         CreateResourceStaticFileResponse: Contains presigned URL for file upload
@@ -39,7 +39,7 @@ async def create_resource(
     """
     logger.info(f"Received request for create_resource: {request}")
     # Create a command from the query data
-    command = CreateResourceCommand(
+    command = CreateVectorizedResourceCommand(
         **request.model_dump(exclude_none=True),
     )
     logger.info(f"Created command: {command}")

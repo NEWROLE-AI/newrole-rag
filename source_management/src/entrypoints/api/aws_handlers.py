@@ -1,3 +1,5 @@
+import asyncio
+
 from aws_lambda_powertools import Logger
 from dependency_injector.wiring import inject, Provide, Closing
 
@@ -5,30 +7,40 @@ from src.adapters.query_service import QueryService
 from src.application.command_handlers.create_knowledge_base import (
     CreateKnowledgeBaseCommandHandler,
 )
-from src.application.command_handlers.create_resource import (
-    CreateResourceCommandHandler,
+from src.application.command_handlers.create_realtime_resource import CreateRealtimeResourceCommandHandler
+from src.application.command_handlers.create_vectorized_resource import (
+    CreateVectorizedResourceCommandHandler,
 )
+from src.application.command_handlers.get_realtime_data import GetRealtimeDataCommandHandler
+from src.application.command_handlers.get_vectorized_data import GetVectorizedDataCommandHandler
 from src.application.commands.create_knowledge_base import CreateKnowledgeBaseCommand
-from src.application.commands.create_resource import CreateResourceCommand
+from src.application.commands.create_realtime_resource import CreateRealtimeResourceCommand
+from src.application.commands.create_vectorized_resource import CreateVectorizedResourceCommand
+from src.application.commands.get_realtime_data import GetRealtimeDataCommand
+from src.application.commands.get_vectorized_data import GetVectorizedDataCommand
 from src.entrypoints.api.ioc import AwsContainer
 from src.entrypoints.api.middleware.utils import lambda_handler_decorator
 from src.entrypoints.api.models import api_models
+from src.entrypoints.api.models.api_models import GetDataResponse, ResourceType
 
 
 @lambda_handler_decorator(api_models.CreateResourceRequest)
 @inject
 async def create_resource(
     request: api_models.CreateResourceRequest,
-    handler: CreateResourceCommandHandler = Closing[
+    vectorized_resource_handler: CreateVectorizedResourceCommandHandler = Closing[
         Provide[AwsContainer.create_resource_handler]
     ],
+    realtime_resource_handler: CreateRealtimeResourceCommandHandler = Closing[
+        Provide[AwsContainer.create_realtime_resource_handler]
+    ]
 ) -> api_models.CreateResourceResponse:
     """
     AWS Lambda handler for creating a new resource in a knowledge base.
 
     Args:
         request (CreateResourceRequest): Contains knowledge_base_id, resource_type and optional file_type
-        handler (CreateResourceCommandHandler): Injected handler for resource creation
+        vectorized_resource_handler (CreateVectorizedResourceCommandHandler): Injected handler for resource creation
 
     Returns:
         CreateResourceStaticFileResponse: Contains presigned URL for file upload
@@ -39,15 +51,29 @@ async def create_resource(
     """
     logger.info(f"Received request for create_resource: {request}")
     # Create a command from the query data
-    command = CreateResourceCommand(
-        **request.model_dump(exclude_none=True),
-    )
-    logger.info(f"Created command: {command}")
-    logger.info(f"Handler instance before execution: {handler}")
-    result = await handler(command)
-    logger.info(f"Handler execution result: {result}")
-    response = api_models.CreateResourceResponse(**result)
-    logger.info(f"Returning response: {response}")
+    if request.resource_type == ResourceType.VECTORIZED:
+        command = CreateVectorizedResourceCommand(
+            **request.model_dump(exclude_none=True, exclude={"resource_type"}),
+        )
+        logger.info(f"Created command: {command}")
+        logger.info(f"Handler instance before execution: {vectorized_resource_handler}")
+        result = await vectorized_resource_handler(command)
+        logger.info(f"Handler execution result: {result}")
+        response = api_models.CreateResourceResponse(**result)
+        logger.info(f"Returning response: {response}")
+    elif request.resource_type == ResourceType.REALTIME:
+        command = CreateRealtimeResourceCommand(
+            **request.model_dump(exclude_none=True, exclude={"resource_type"}),
+        )
+        logger.info(f"Created command: {command}")
+        logger.info(f"Handler instance before execution: {realtime_resource_handler}")
+        result = await realtime_resource_handler(command)
+        logger.info(f"Handler execution result: {result}")
+        response = api_models.CreateResourceResponse(**result)
+        logger.info(f"Returning response: {response}")
+    else:
+        raise Exception("Invalid resource type")
+
     return response
 
 
@@ -142,6 +168,42 @@ async def get_all_resources(
     response = api_models.GetAllResourcesResponse(knowledge_bases=result)
     logger.info(f"Returning response with {len(result)} knowledge bases")
     return response
+
+
+@lambda_handler_decorator(api_models.GetDataRequest)
+@inject
+async def retrieve_data(
+    request: api_models.GetDataRequest,
+    realtime_data_handler: GetRealtimeDataCommandHandler = Closing[Provide[AwsContainer.get_realtime_data_service]],
+    vectorized_data_handler: GetVectorizedDataCommandHandler = Closing[Provide[AwsContainer.get_vectorized_data_service]]
+) -> api_models.GetDataResponse:
+    """
+    AWS Lambda handler for retrieving all resources.
+
+    Args:
+        request (GetAllResourcesRequest): request
+        query_service (QueryService): Injected query service for database operations
+
+    Returns:
+        GetAllResourcesResponse: Contains list of resources
+
+    Raises:
+        ValidationError: If request data is invalid
+        Exception: For any other errors during processing
+    """
+    logger.info(f"Received request for get data: {request}")
+    realtime_command = GetRealtimeDataCommand(request.realtime_resources)
+    vectorized_command = GetVectorizedDataCommand(request.vectorization_resources)
+
+    task_list = [realtime_data_handler(realtime_command), vectorized_data_handler(vectorized_command)]
+
+    result = await asyncio.gather(*task_list)
+
+    return GetDataResponse (
+        realtime_responses = result[0],
+        vectorize_responses = result[1]
+    )
+
 
 
 # Initializing the logger and dependency container

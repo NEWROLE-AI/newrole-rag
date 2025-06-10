@@ -1,11 +1,11 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from datetime import datetime
 from enum import Enum
 from typing import Any
 
 
-class ResourceType(str, Enum):
+class VectorizedResourceType(str, Enum):
     """Enum defining the possible types of resources."""
 
     STATIC_FILE = "STATIC_FILE"
@@ -17,10 +17,16 @@ class ResourceType(str, Enum):
 class DictFormatMixin:
 
     @classmethod
-    def timestamp_dict_factory(cls, obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        return obj
+    def timestamp_dict_factory(cls, items):
+        # items — это список пар (key, value)
+        result = {}
+        for key, value in items:
+            if isinstance(value, datetime):
+                result[key] = value.isoformat()
+            else:
+                result[key] = value
+        return result
+
 
     def to_dict(self) -> dict:
         return asdict(self, dict_factory=DictFormatMixin.timestamp_dict_factory)
@@ -39,13 +45,13 @@ class Resource(DictFormatMixin):
     Attributes:
         resource_id (str): The unique identifier for the resource.
         knowledge_base_id (str): The ID of the knowledge base to which the resource belongs.
-        type (ResourceType): The type of resource (e.g., STATIC_FILE).
+        type (VectorizedResourceType): The type of resource (e.g., STATIC_FILE).
         extra (SlackChannel | File | None): Extra information about the resource.
     """
 
     resource_id: str
     knowledge_base_id: str
-    type: ResourceType
+    type: VectorizedResourceType
     extra: SlackChannel | File | Database | GoogleDrive | DynamodbTable | None = None
 
     @classmethod
@@ -60,7 +66,7 @@ class Resource(DictFormatMixin):
         return cls(
             resource_id=data.get("resource_id"),
             knowledge_base_id=data.get("knowledge_base_id"),
-            type=ResourceType(data.get("type")),
+            type=VectorizedResourceType(data.get("type")),
             extra=extra
         )
 
@@ -132,9 +138,21 @@ class DynamodbTable:
 
 
 RESOURCE_TYPE_MAP: dict[str, type] = {
-    ResourceType.SLACK_CHANNEL.value: SlackChannel,
-    ResourceType.STATIC_FILE.value: File,
-    ResourceType.DATABASE.value: Database,
-    ResourceType.GOOGLE_DRIVE.value: GoogleDrive,
-    ResourceType.DYNAMODB_TABLE.value: DynamodbTable,
+    VectorizedResourceType.SLACK_CHANNEL.value: SlackChannel,
+    VectorizedResourceType.STATIC_FILE.value: File,
+    VectorizedResourceType.DATABASE.value: Database,
+    VectorizedResourceType.GOOGLE_DRIVE.value: GoogleDrive,
+    VectorizedResourceType.DYNAMODB_TABLE.value: DynamodbTable,
 }
+
+
+@dataclass
+class VectorizedKnowledge:
+    knowledge_base_id: str
+    resources: list[VectorizedKnowledgeResource]
+
+
+@dataclass
+class VectorizedKnowledgeResource:
+    resource_id: str
+    content: str
