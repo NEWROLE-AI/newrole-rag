@@ -10,9 +10,13 @@ class SourceManagementApiClient(ABC):
     """
 
     @abstractmethod
-    async def get_resource_ids_by_knowledge_base_id(
+    async def get_resource_info_by_knowledge_base_id(
         self, knowledge_base_id: str
-    ) -> list[str]:
+    ) -> dict:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_data(self, request_body: dict) -> dict:
         raise NotImplementedError
 
 

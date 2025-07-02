@@ -246,7 +246,7 @@ Resources:
           Properties:
             RestApiId: !Ref ApiGateway
             Path: /api/v1/data/retrieve
-            Method: GET
+            Method: POST
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue:

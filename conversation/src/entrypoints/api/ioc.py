@@ -117,6 +117,7 @@ class Container(DeclarativeContainer):
         schema=secrets.get("schema", ""),
     )
 
+
     http_session = providers.Singleton(
         aiohttp.ClientSession,
     )

@@ -2,6 +2,7 @@ import uuid
 
 from aws_lambda_powertools import Logger
 
+from admin_panel.src.adapters.database.models import knowledge_bases
 from src.application.command_handlers.base import BaseCommandHandler
 from src.application.commands.conversation import ConversationCommand
 from src.application.models.conversation import Message, Conversation
@@ -87,40 +88,71 @@ class ConversationCommandHandler(BaseCommandHandler):
             # Fetch the agent details associated with the conversation
             agent = await uow.agent_chat_bots.get(conversation.agent_chat_bot_id)
 
-            sql_query = await self._ai_service.generate_sql_response(
-                command.message
+            resource_info = await self._source_management_api_client.get_resource_info_by_knowledge_base_id(agent.knowledge_base_id)
+
+            source_management_query_body = await self._ai_service.generate_api_response(
+                conversation.messages, agent.knowledge_base_id, resource_info
             )
 
-            # Retrieve knowledge from the vectorized knowledge base
-            knowledge_base = await uow.execute(sql_query)
-            logger.info("knowledge base get success", extra={"knowledge_base": knowledge_base})
-            # Generate a response using the AI service
-            message, payload = await self._ai_service.generate_response(
+            resource_data = await self._source_management_api_client.get_data(request_body=source_management_query_body)
+
+            message = await self._ai_service.generate_response_with_resources(
                 prompt=agent.prompt,
-                vectorized_knowledge_base=knowledge_base,
+                resource_data=resource_data,
                 messages=conversation.messages,
             )
-            if payload:
-                if any(key != "data_ready" for key in payload):
-                    logger.info("Save background check")
-                    request_id = await uow.background_checks.save(command.user_id, payload)
-                    message += f" Request_id: {request_id}"
-                else:
-                    logger.warning("Payload contains only 'data_ready', skipping save")
-            # Create a message for the agent's response
+
             agent_message = Message(
                 message_id=str(uuid.uuid4()),
                 content=message,
                 role="assistant",
                 user_id="assistant",
             )
+
             conversation.messages.append(agent_message)
 
-            # Save the updated conversation to the database
             await uow.conversations.save(conversation)
 
-            # Return the response as a dictionary
             return {
                 "conversation_id": conversation.conversation_id,
                 "message": message,
             }
+
+            # ====================================================================================
+            # sql_query = await self._ai_service.generate_sql_response(
+            #     command.message
+            # )
+            #
+            # # Retrieve knowledge from the vectorized knowledge base
+            # knowledge_base = await uow.execute(sql_query)
+            # logger.info("knowledge base get success", extra={"knowledge_base": knowledge_base})
+            # # Generate a response using the AI service
+            # message, payload = await self._ai_service.generate_response(
+            #     prompt=agent.prompt,
+            #     vectorized_knowledge_base=knowledge_base,
+            #     messages=conversation.messages,
+            # )
+            # if payload:
+            #     if any(key != "data_ready" for key in payload):
+            #         logger.info("Save background check")
+            #         request_id = await uow.background_checks.save(command.user_id, payload)
+            #         message += f" Request_id: {request_id}"
+            #     else:
+            #         logger.warning("Payload contains only 'data_ready', skipping save")
+            # # Create a message for the agent's response
+            # agent_message = Message(
+            #     message_id=str(uuid.uuid4()),
+            #     content=message,
+            #     role="assistant",
+            #     user_id="assistant",
+            # )
+            # conversation.messages.append(agent_message)
+            #
+            # # Save the updated conversation to the database
+            # await uow.conversations.save(conversation)
+            #
+            # # Return the response as a dictionary
+            # return {
+            #     "conversation_id": conversation.conversation_id,
+            #     "message": message,
+            # }

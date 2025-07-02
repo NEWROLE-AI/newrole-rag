@@ -29,3 +29,21 @@ class AIService(ABC):
         query: str
     ) -> str:
         raise NotImplementedError
+
+    @abstractmethod
+    async def generate_api_response(
+            self,
+            messages: list[Message],
+            knowledge_base_id: str,
+            resource_info: dict,
+    ) -> dict:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def generate_response_with_resources(
+            self,
+            prompt: Prompt,
+            resource_data: dict,
+            messages: list[Message],
+    )-> str:
+        raise NotImplementedError
