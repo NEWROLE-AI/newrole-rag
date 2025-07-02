@@ -52,18 +52,18 @@ class HttpSourceManagementApiClient(SourceManagementApiClient):
         )
         try:
             async with self._session.get(
-                url, params={"knowledge_base_id": knowledge_base_id}
+                url
             ) as response:
                 if response.status != 200:
                     logger.error(
                         f"Error fetching resources ids by knowledge_base_id data for ID={knowledge_base_id}: HTTP {response.status}"
                     )
                     raise HTTPError()
-                resource_info = await response.json()
+                response_dict = await response.json()
             logger.info(
                 f"HttpSourceManagementApiClient: Successfully fetched resource ids data for ID={knowledge_base_id}"
             )
-            return resource_info
+            return response_dict.get("resource_info")
         except ClientError as e:
             logger.error(
                 f"HTTP ClientError while fetching resource ids with ID={knowledge_base_id}: {str(e)}"

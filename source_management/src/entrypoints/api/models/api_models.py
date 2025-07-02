@@ -195,3 +195,10 @@ class GetDataRequest(BaseModel):
 class GetDataResponse(BaseModel):
     realtime_responses: tuple[dict | None, ...] = Field(default_factory=tuple)
     vectorize_responses: tuple[dict | None, ...] = Field(default_factory=tuple)
+
+
+class GetResourcesByKnowledgeBaseIdRequest(BaseModel):
+    knowledge_base_id: str
+
+class GetResourcesByKnowledgeBaseIdResponse(BaseModel):
+    resource_info: list[dict]

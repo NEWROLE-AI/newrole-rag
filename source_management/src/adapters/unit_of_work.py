@@ -4,6 +4,7 @@ from dataclasses import asdict
 from datetime import datetime, UTC
 
 from aws_lambda_powertools import Logger
+from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from sqlalchemy import update, select, delete, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -80,6 +81,11 @@ class DynamoResourceRepository(ResourceRepository):
                 message=f"Resource with ID {resource_id} not found"
             )
 
+    async def get_by_knowledge_base_id(self, knowledge_base_id: str) -> list[dict]:
+        response = self._resources.query(
+            KeyConditionExpression=Key('knowledge_base_id').eq(knowledge_base_id)
+        )
+        return response.get('Items', [])
 
 
 

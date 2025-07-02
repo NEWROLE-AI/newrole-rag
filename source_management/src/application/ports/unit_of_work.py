@@ -20,6 +20,10 @@ class ResourceRepository(ABC):
     async def add(self, resource: Resource) -> None:
         raise NotImplementedError
 
+    @abstractmethod
+    async def get_by_knowledge_base_id(self, knowledge_base_id: str) -> list[dict]:
+        raise NotImplementedError
+
 
 class SlackChannelRepository(ABC):
     @abstractmethod

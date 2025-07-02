@@ -18,6 +18,7 @@ from src.application.commands.create_realtime_resource import CreateRealtimeReso
 from src.application.commands.create_vectorized_resource import CreateVectorizedResourceCommand
 from src.application.commands.get_realtime_data import GetRealtimeDataCommand
 from src.application.commands.get_vectorized_data import GetVectorizedDataCommand
+from src.application.ports.unit_of_work import UnitOfWork
 from src.entrypoints.api.ioc import AwsContainer
 from src.entrypoints.api.middleware.utils import lambda_handler_decorator
 from src.entrypoints.api.models import api_models
@@ -204,6 +205,16 @@ async def retrieve_data(
         vectorize_responses = result[1]
     )
 
+
+@lambda_handler_decorator(api_models.GetResourcesByKnowledgeBaseIdRequest)
+@inject
+async def retrieve_data(
+    request: api_models.GetResourcesByKnowledgeBaseIdRequest,
+    unit_of_work: UnitOfWork = Closing[Provide[AwsContainer.unit_of_work]]
+) -> api_models.GetResourcesByKnowledgeBaseIdResponse:
+    async with unit_of_work as uow:
+        resource_info = await uow.resources.get_by_knowledge_base_id(request.knowledge_base_id)
+    return api_models.GetResourcesByKnowledgeBaseIdResponse(resource_info=resource_info)
 
 
 # Initializing the logger and dependency container
