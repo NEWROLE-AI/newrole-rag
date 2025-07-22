@@ -2,7 +2,7 @@ from fastapi import Depends, APIRouter
 from dependency_injector.wiring import Provide, inject
 
 from src.entrypoints.api.models import api_models
-from src.entrypoints.api.ioc import Container
+from src.entrypoints.api.ioc import FastapiContainer
 from aws_lambda_powertools import Logger
 
 from src.application.command_handlers.conversation import ConversationCommandHandler
@@ -22,7 +22,7 @@ logger = Logger("fast_api_handlers")
 async def conversation(
     request: api_models.ConversationRequest,
     handler: ConversationCommandHandler = Depends(
-        Provide[Container.conversation_handler]
+        Provide[FastapiContainer.conversation_handler]
     ),
 ) -> api_models.ConversationResponse:
     """
@@ -61,7 +61,7 @@ async def conversation(
 async def create_conversation(
     request: api_models.CreateConversationRequest,
     handler: CreateConversationCommandHandler = Depends(
-        Provide[Container.create_conversation_handler]
+        Provide[FastapiContainer.create_conversation_handler]
     ),
 ) -> api_models.ConversationResponse:
     """

@@ -27,6 +27,7 @@ fastapi = "^0.115.12"
 aiohttp = "^3.12.9"
 opensearch-py = "^2.8.0"
 click = "^8.2.1"
+hvac = "^2.0.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.10.0"

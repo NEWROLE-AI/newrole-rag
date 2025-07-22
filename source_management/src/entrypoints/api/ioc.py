@@ -5,6 +5,7 @@ import traceback
 import aiohttp
 import boto3
 import httplib2
+import hvac
 from boto3 import client as boto3_client
 from aws_lambda_powertools import Logger
 from aws_secretsmanager_caching import SecretCache, SecretCacheConfig
@@ -102,7 +103,7 @@ class AwsContainer(containers.DeclarativeContainer):
         boto3.resource, service_name="dynamodb", region_name=region
     )
 
-    # Application components
+    # Applicatio   n components
     s3_client = providers.Singleton(boto3_client, service_name="s3", region_name=region)
 
     secrets_client = providers.Singleton(
@@ -243,13 +244,17 @@ class AwsContainer(containers.DeclarativeContainer):
 
 
 class FastapiContainer(containers.DeclarativeContainer):
-    #Mock secret
-    secrets = {
-        "google_drive_credentials": "{}",
-        "database_url": "",
-        "s3_bucket_name": "",
-        "dynamodb_table_name": "",
-    }
+    region = os.environ.get("REGION")
+
+    #Secrets
+    client = hvac.Client(
+        url=os.getenv('VAULT_ADDR', 'http://localhost:8200'),
+        token=os.getenv('VAULT_TOKEN')
+    )
+
+    assert client.is_authenticated()
+
+    secrets = client.secrets.kv.read_secret_version(path=os.getenv('SECRET_PATH'))['data']['data']
 
     # SQL client configuration
     db_session_maker = providers.Resource(
@@ -262,17 +267,23 @@ class FastapiContainer(containers.DeclarativeContainer):
     )
 
     # Dynamo client configuration
-    dynamo_client = ()
+    dynamo_client = providers.Singleton(
+        boto3.resource, service_name="dynamodb", region_name=region
+    )
     # Application components
-    s3_client = ()
+    # s3_client = providers.Singleton(boto3_client, service_name="s3", region_name=region)
 
-    secrets_client = ()
+    secrets_client = providers.Singleton(
+        hvac.Client,
+        url=os.getenv('VAULT_ADDR', 'http://localhost:8200'),
+        token=os.getenv('VAULT_TOKEN')
+    )
 
-    # # Google Drive client configuration
-    # google_credentials = service_account.Credentials.from_service_account_info(
-    #     json.loads((secrets.get("google_drive_credentials"))),
-    #     scopes=["https://www.googleapis.com/auth/drive.readonly"],
-    # )
+    # Google Drive client configuration
+    google_credentials = service_account.Credentials.from_service_account_info(
+        json.loads((secrets.get("google_drive_credentials"))),
+        scopes=["https://www.googleapis.com/auth/drive.readonly"],
+    )
 
     google_drive_client = providers.Singleton(
         google_client,
@@ -292,13 +303,19 @@ class FastapiContainer(containers.DeclarativeContainer):
         ApiGoogleDriveClient, google_drive_client=google_drive_client
     )
 
-    storage_manager = providers.Singleton(
-        S3StorageManager,
-        client=s3_client,
-        bucket_name=secrets.get("s3_bucket_name"),
-    )
+    # storage_manager = providers.Singleton(
+    #     S3StorageManager,
+    #     client=s3_client,
+    #     bucket_name=secrets.get("s3_bucket_name"),
+    # )
 
     data_base_manager = providers.Factory(DatabaseManagerImpl)
+
+    secrets_manager_client = providers.Singleton(
+        hvac.Client,
+        url=os.getenv('VAULT_ADDR', 'http://localhost:8200'),
+        token=os.getenv('VAULT_TOKEN')
+    )
 
     unit_of_work = providers.Singleton(
         UnitOfWorkImpl,
@@ -317,7 +334,7 @@ class FastapiContainer(containers.DeclarativeContainer):
     create_resource_handler = providers.Singleton(
         CreateVectorizedResourceCommandHandler,
         unit_of_work=unit_of_work,
-        storage_manager=storage_manager,
+        # storage_manager=storage_manager,
         google_drive_api_client=google_drive_api_client,
         data_base_manager=data_base_manager,
         dynamodb_client=dynamodb_client,

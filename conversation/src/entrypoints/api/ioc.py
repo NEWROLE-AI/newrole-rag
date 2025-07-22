@@ -4,6 +4,7 @@ import traceback
 
 import aiohttp
 import boto3
+import hvac
 from anthropic import Anthropic
 from aws_lambda_powertools import Logger
 from aws_secretsmanager_caching import SecretCache, SecretCacheConfig
@@ -56,7 +57,7 @@ def get_secret(secrets_cache: SecretCache, env: str) -> dict:
         raise RuntimeError(f"Failed to fetch secret {secret_name}: {str(e)}")
 
 
-class Container(DeclarativeContainer):
+class FastapiContainer(DeclarativeContainer):
     """
     Dependency Injection container that configures and provides all service dependencies.
 
@@ -66,15 +67,25 @@ class Container(DeclarativeContainer):
         - Command handlers
     """
 
-    region = os.environ.get("REGION")
+    region = os.environ.get("REGION", "us-east-1")
     environment = os.environ.get("ENVIRONMENT")
     logger.info("Initializing Container")
     # AWS and database client setup
-    secrets_manager_client = boto3.client("secretsmanager", region_name=region)
+    # secrets_manager_client = boto3.client("secretsmanager", region_name=region)
     wiring_config = WiringConfiguration(modules=[".fastapi_handlers"])
-    cache_config = SecretCacheConfig()
-    secrets_cache = SecretCache(config=cache_config, client=secrets_manager_client)
-    secrets = get_secret(secrets_cache, environment)
+    # cache_config = SecretCacheConfig()
+    # secrets_cache = SecretCache(config=cache_config, client=secrets_manager_client)
+    # secrets = get_secret(secrets_cache, environment)
+
+    #Secrets
+    client = hvac.Client(
+        url=os.getenv('VAULT_ADDR', 'http://localhost:8200'),
+        token=os.getenv('VAULT_TOKEN', 'root')
+    )
+
+    assert client.is_authenticated()
+
+    secrets = client.secrets.kv.read_secret_version(path=os.getenv('SECRET_PATH'))['data']['data']
 
     # Opensearch client configuration
     elastic_search_client = providers.Singleton(
@@ -151,7 +162,7 @@ class Container(DeclarativeContainer):
 
     db_session_maker_custom = providers.Resource(
         get_session_maker,
-        database_url=secrets.get("custom_database_url"),
+        database_url=secrets.get("database_url"),
     )
 
     db_session_factory_custom = providers.Resource(

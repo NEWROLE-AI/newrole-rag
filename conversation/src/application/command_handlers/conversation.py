@@ -2,7 +2,6 @@ import uuid
 
 from aws_lambda_powertools import Logger
 
-from admin_panel.src.adapters.database.models import knowledge_bases
 from src.application.command_handlers.base import BaseCommandHandler
 from src.application.commands.conversation import ConversationCommand
 from src.application.models.conversation import Message, Conversation

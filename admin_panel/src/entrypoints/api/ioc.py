@@ -3,6 +3,7 @@ import os
 import traceback
 
 import boto3
+import hvac
 from aws_lambda_powertools import Logger
 from aws_secretsmanager_caching import SecretCache, SecretCacheConfig
 from dependency_injector import providers
@@ -68,6 +69,8 @@ class AwsContainer(DeclarativeContainer):
 
     secrets = get_secret(secrets_cache, environment)
 
+
+
     # SQL client configuration
     db_session_maker = providers.Resource(
         get_session_maker,
@@ -113,10 +116,15 @@ class FastapiContainer(DeclarativeContainer):
         - Database connection and session management(sql)
         - Command handlers
     """
-    # Mock secret
-    secrets = {
-        "database_url": "",
-    }
+    #Secrets
+    client = hvac.Client(
+        url=os.getenv('VAULT_ADDR', 'http://localhost:8200'),
+        token=os.getenv('VAULT_TOKEN')
+    )
+
+    assert client.is_authenticated()
+
+    secrets = client.secrets.kv.read_secret_version(path=os.getenv('SECRET_PATH'))['data']['data']
 
     # SQL client configuration
     db_session_maker = providers.Resource(

@@ -1,8 +1,9 @@
 import json
 import os
 from dataclasses import asdict
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timezone
 
+import hvac
 from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
@@ -405,6 +406,72 @@ class SecretsManagerDatabaseRepository(DatabaseRepository):
             SecretId=secret_name, SecretString=json.dumps(secret_value)
         )
 
+class VaultManagerDatabaseRepository(DatabaseRepository):
+    """Repository for managing database connection parameters in HashiCorp Vault."""
+
+    def __init__(self, client: hvac.Client, ):
+        self._client = client
+        if not self._client.is_authenticated():
+            logger.error("Vault authentication failed")
+            raise DomainException("Could not authenticate to Vault")
+        self._secret_path_prefix = "secret/data/database_info"
+
+    async def add(self, resource: Resource) -> None:
+        """
+        Store or update database connection parameters in Vault.
+
+        Args:
+            resource (Resource): Resource containing database connection parameters
+        Raises:
+            DomainException: If the resource is invalid or there's an error storing the secret
+        """
+        # Валидация входных данных
+        if not resource.extra or not hasattr(resource.extra, "connection_params"):
+            logger.error("Invalid resource: missing connection parameters")
+            raise DomainException("Invalid resource: missing connection parameters")
+
+        path = f"{self._secret_path_prefix}/{resource.knowledge_base_id}/{resource.resource_id}"
+
+        secret_data = {
+            "data": {
+                "connection_params": resource.extra.connection_params,
+                "query": getattr(resource.extra, "query", None),
+                "metadata": {
+                    "resource_id": resource.resource_id,
+                    "knowledge_base_id": resource.knowledge_base_id,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                },
+            }
+        }
+
+        try:
+            read_resp = self._client.secrets.kv.v2.read_secret_version(path=path)
+
+            self._client.secrets.kv.v2.create_or_update_secret(
+                path=path,
+                secret=secret_data['data']
+            )
+            logger.info(
+                "Successfully updated Vault database connection parameters",
+                extra={"path": path}
+            )
+        except hvac.exceptions.InvalidPath:
+
+            self._client.secrets.kv.v2.create_or_update_secret(
+                path=path,
+                secret=secret_data['data']
+            )
+            logger.info(
+                "Successfully stored new Vault database connection",
+                extra={"path": path}
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to store database connection in Vault",
+                extra={"error": str(e), "path": path}
+            )
+            raise DomainException(f"Failed to store database connection: {str(e)}")
+
 
 class SqlRealtimeResourceRepository(RealtimeResourceRepository):
 
@@ -622,7 +689,7 @@ class UnitOfWorkImpl(UnitOfWork):
     resources: DynamoResourceRepository
     knowledge_bases: SqlKnowledgeBaseRepository
     slack_channels: DynamoSlackChannelRepository
-    databases: SecretsManagerDatabaseRepository
+    databases: SecretsManagerDatabaseRepository | VaultManagerDatabaseRepository
     realtime_resources: DynamodbRealtimeResourceRepository
     realtime_databases: SecretRealtimeDatabaseRepository
 
@@ -630,7 +697,7 @@ class UnitOfWorkImpl(UnitOfWork):
         self,
         session: AsyncSession,
         dynamo_client: Client,
-        secrets_manager_client: SecretsManagerClient,
+        secrets_manager_client,
         dynamodb_table_name: str,
     ) -> None:
         """
@@ -664,7 +731,8 @@ class UnitOfWorkImpl(UnitOfWork):
         self.resources = DynamoResourceRepository(self._dynamo_client, self._dynamodb_table_name)
         self.knowledge_bases = SqlKnowledgeBaseRepository(self.session)
         self.slack_channels = DynamoSlackChannelRepository(self._dynamo_client)
-        self.databases = SecretsManagerDatabaseRepository(self._secrets_manager_client)
+        # self.databases = SecretsManagerDatabaseRepository(self._secrets_manager_client)
+        self.databases = VaultManagerDatabaseRepository(self._secrets_manager_client)
         self.realtime_resources = DynamodbRealtimeResourceRepository(self._dynamo_client, self._dynamodb_table_name)
         self.realtime_databases = SecretRealtimeDatabaseRepository(self._secrets_manager_client)
         return self

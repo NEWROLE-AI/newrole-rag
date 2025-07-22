@@ -49,8 +49,8 @@ class CreateVectorizedResourceCommandHandler(BaseCommandHandler):
         unit_of_work: UnitOfWork,
         storage_manager: StorageManager,
         google_drive_api_client: GoogleDriveClient,
-        data_base_manager: DatabaseManager,
         dynamodb_client: DynamodbClient,
+        data_base_manager: DatabaseManager = None,
     ):
         """
         Initializes the resource creation handler with dependencies.
