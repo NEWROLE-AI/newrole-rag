@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  vault:
+    image: hashicorp/vault:latest
+    container_name: vault-dev
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    restart: unless-stopped
+
+  source-management:
+    build:
+      context: ./source_management
+      dockerfile: Dockerfile
+    container_name: source-management
+    depends_on:
+      - vault
+    ports:
+      - "8000:8000"
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: root
+      SECRET_PATH: dev/ai-custom-bot/source-management
+    restart: unless-stopped
+
+  admin-panel:
+    build:
+      context: ./admin_panel
+      dockerfile: Dockerfile
+    container_name: admin_panel
+    depends_on:
+      - vault
+    ports:
+      - "8001:8000"
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: root
+      SECRET_PATH: dev/ai-custom-bot/admin-panel
+    restart: unless-stopped
+
+  conversation:
+    build:
+      context: ./conversation
+      dockerfile: Dockerfile
+    container_name: conversation
+    depends_on:
+      - vault
+    ports:
+      - "8002:8000"
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: root
+      SECRET_PATH: dev/ai-custom-bot/conversation
+    restart: unless-stopped

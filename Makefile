@@ -21,3 +21,7 @@ migration:
 
 migrate:
 	cd admin_panel && poetry run alembic upgrade head
+
+build_image:
+	docker build -t source-management ./source_management && docker build -t conversation ./conversation && docker build -t admin-panel ./admin_panel
+
