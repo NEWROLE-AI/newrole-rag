@@ -3,7 +3,7 @@ import asyncio
 from aws_lambda_powertools import Logger
 from dependency_injector.wiring import inject, Provide, Closing
 
-from src.adapters.query_service import QueryService
+from src.adapters.query_service import DynamoQueryService
 from src.application.command_handlers.create_knowledge_base import (
     CreateKnowledgeBaseCommandHandler,
 )
@@ -118,14 +118,14 @@ async def create_knowledge_base(
 @inject
 async def get_resource_ids_by_knowledge_base_id(
     request: api_models.GetResourceIdsByKnowledgeBaseRequest,
-    query_service: QueryService = Closing[Provide[AwsContainer.query_service]],
+    query_service: DynamoQueryService = Closing[Provide[AwsContainer.query_service]],
 ) -> api_models.GetResourceIdsByKnowledgeBaseResponse:
     """
     AWS Lambda handler for retrieving all resource IDs associated with a knowledge base.
 
     Args:
         request (GetResourceIdsByKnowledgeBaseRequest): Contains knowledge base ID
-        query_service (QueryService): Injected query service for database operations
+        query_service (DynamoQueryService): Injected query service for database operations
 
     Returns:
         GetResourceIdsByKnowledgeBaseResponse: Contains list of resource IDs
@@ -148,14 +148,14 @@ async def get_resource_ids_by_knowledge_base_id(
 @inject
 async def get_all_resources(
     request: api_models.GetAllResourcesRequest,
-    query_service: QueryService = Closing[Provide[AwsContainer.query_service]],
+    query_service: DynamoQueryService = Closing[Provide[AwsContainer.query_service]],
 ) -> api_models.GetAllResourcesResponse:
     """
     AWS Lambda handler for retrieving all resources.
 
     Args:
         request (GetAllResourcesRequest): request
-        query_service (QueryService): Injected query service for database operations
+        query_service (DynamoQueryService): Injected query service for database operations
 
     Returns:
         GetAllResourcesResponse: Contains list of resources
@@ -183,7 +183,7 @@ async def retrieve_data(
 
     Args:
         request (GetAllResourcesRequest): request
-        query_service (QueryService): Injected query service for database operations
+        query_service (DynamoQueryService): Injected query service for database operations
 
     Returns:
         GetAllResourcesResponse: Contains list of resources

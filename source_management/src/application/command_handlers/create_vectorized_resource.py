@@ -47,9 +47,9 @@ class CreateVectorizedResourceCommandHandler(BaseCommandHandler):
     def __init__(
         self,
         unit_of_work: UnitOfWork,
-        storage_manager: StorageManager,
         google_drive_api_client: GoogleDriveClient,
-        dynamodb_client: DynamodbClient,
+        storage_manager: StorageManager = None,
+        dynamodb_client: DynamodbClient = None,
         data_base_manager: DatabaseManager = None,
     ):
         """

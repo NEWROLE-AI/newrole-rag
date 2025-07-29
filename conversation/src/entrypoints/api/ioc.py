@@ -30,31 +30,40 @@ from src.application.command_handlers.create_conversation import (
 logger = Logger(service="ioc")
 
 
-def get_secret(secrets_cache: SecretCache, env: str) -> dict:
-    """
-    Retrieves secrets from AWS Secrets Manager.
+def load_secrets():
+    env = os.getenv("ENVIRONMENT")
 
-    Args:
-        secrets_cache (SecretCache): AWS Secrets Manager cache instance
-        env (str): Environment(dev/prod)
+    if env in ["stg", "prod"]:
+        import hvac
+        client = hvac.Client(
+            url=os.getenv('VAULT_ADDR', 'http://localhost:8200'),
+            token=os.getenv('VAULT_TOKEN')
+        )
+        assert client.is_authenticated(), "Vault authentication failed"
+        return client.secrets.kv.read_secret_version(
+            path=os.getenv('SECRET_PATH')
+        )['data']['data']
 
-    Returns:
-        dict: Dictionary containing secret values
+    elif env == "dev":
+        import dotenv
+        dotenv.load_dotenv()
+        return {
+            "claude_api_key": os.getenv("CLAUDE_API_KEY"),
+            "claude_max_tokens": os.getenv("CLAUDE_MAX_TOKENS"),
+            "claude_system_prompt": os.getenv("CLAUDE_SYSTEM_PROMPT"),
+            "claude_temperature": os.getenv("CLAUDE_TEMPERATURE"),
+            "database_url": os.getenv("DATABASE_URL"),
+            "knn_parameter": os.getenv("KNN_PARAMETER"),
+            "openai_api_key": os.getenv("OPENAI_API_KEY"),
+            "opensearch_host": os.getenv("OPENSEARCH_HOST"),
+            "opensearch_username": os.getenv("OPENSEARCH_USERNAME"),
+            "opensearch_password": os.getenv("OPENSEARCH_PASSWORD"),
+            "source_management_url": os.getenv("SOURCE_MANAGEMENT_URL"),
+            "vectorize_service_url": os.getenv("VECTORIZE_SERVICE_URL"),
+        }
 
-    Raises:
-        RuntimeError: If secret retrieval fails
-    """
-    secret_name = f"{env}/ai-custom-bot/conversation"
-    try:
-        logger.info(f"Getting secret {secret_name}")
-        secret_value = secrets_cache.get_secret_string(secret_name)
-        logger.info(f"Secret value {secret_value}")
-        return json.loads(secret_value)
-    except Exception as e:
-        logger.info(e)
-        logger.info(traceback.format_exc())
-        logger.info(f"Failed to get secret {secret_name}")
-        raise RuntimeError(f"Failed to fetch secret {secret_name}: {str(e)}")
+    else:
+        raise ValueError(f"Unsupported ENVIRONMENT: {env}")
 
 
 class FastapiContainer(DeclarativeContainer):
@@ -78,14 +87,7 @@ class FastapiContainer(DeclarativeContainer):
     # secrets = get_secret(secrets_cache, environment)
 
     #Secrets
-    client = hvac.Client(
-        url=os.getenv('VAULT_ADDR', 'http://localhost:8200'),
-        token=os.getenv('VAULT_TOKEN', 'root')
-    )
-
-    assert client.is_authenticated()
-
-    secrets = client.secrets.kv.read_secret_version(path=os.getenv('SECRET_PATH'))['data']['data']
+    secrets = load_secrets()
 
     # Opensearch client configuration
     elastic_search_client = providers.Singleton(

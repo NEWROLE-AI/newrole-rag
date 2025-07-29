@@ -72,17 +72,6 @@ class CreateKnowledgeBaseResponse(BaseModel):
     knowledge_base_id: str
 
 
-class GetResourceIdsByKnowledgeBaseRequest(BaseModel):
-    """
-    Request model for retrieving resource IDs.
-
-    Attributes:
-        knowledge_base_id (str): ID of the knowledge base
-    """
-
-    knowledge_base_id: str
-
-
 class GetResourceIdsByKnowledgeBaseResponse(BaseModel):
     """
     Response model containing list of resource IDs.
@@ -92,14 +81,6 @@ class GetResourceIdsByKnowledgeBaseResponse(BaseModel):
     """
 
     resource_ids: list[str]
-
-
-class GetAllResourcesRequest(BaseModel):
-    """
-    Request model for retrieving all resources.
-    """
-
-    pass
 
 
 class GetAllResourcesResponse(BaseModel):

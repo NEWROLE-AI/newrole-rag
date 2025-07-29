@@ -22,143 +22,161 @@ from src.application.command_handlers.update_prompt_text import UpdatePromptText
 
 logger = Logger(service="ioc")
 
+if os.getenv("CONTAINER_TYPE") == "aws":
+    def get_secret(secrets_cache: SecretCache, env: str) -> dict:
+        """
+        Retrieves secrets from AWS Secrets Manager.
 
-def get_secret(secrets_cache: SecretCache, env: str) -> dict:
-    """
-    Retrieves secrets from AWS Secrets Manager.
+        Args:
+            secrets_cache (SecretCache): AWS Secrets Manager cache instance
+            env (str): environment(dev/prod)
 
-    Args:
-        secrets_cache (SecretCache): AWS Secrets Manager cache instance
-        env (str): environment(dev/prod)
+        Returns:
+            dict: Dictionary containing secret values
 
-    Returns:
-        dict: Dictionary containing secret values
-
-    Raises:
-        RuntimeError: If secret retrieval fails
-    """
-    secret_name = f"{env}/ai-custom-bot/admin-panel"
-    try:
-        logger.info(f"Getting secret {secret_name}")
-        secret_value = secrets_cache.get_secret_string(secret_name)
-        logger.info(f"Secret value {secret_value}")
-        return json.loads(secret_value)
-    except Exception as e:
-        logger.info(e)
-        logger.info(traceback.format_exc())
-        logger.info(f"Failed to get secret {secret_name}")
-        raise RuntimeError(f"Failed to fetch secret {secret_name}: {str(e)}")
+        Raises:
+            RuntimeError: If secret retrieval fails
+        """
+        secret_name = f"{env}/ai-custom-bot/admin-panel"
+        try:
+            logger.info(f"Getting secret {secret_name}")
+            secret_value = secrets_cache.get_secret_string(secret_name)
+            logger.info(f"Secret value {secret_value}")
+            return json.loads(secret_value)
+        except Exception as e:
+            logger.info(e)
+            logger.info(traceback.format_exc())
+            logger.info(f"Failed to get secret {secret_name}")
+            raise RuntimeError(f"Failed to fetch secret {secret_name}: {str(e)}")
 
 
-class AwsContainer(DeclarativeContainer):
-    """
-    Dependency Injection container that configures and provides all service dependencies.
+    class AwsContainer(DeclarativeContainer):
+        """
+        Dependency Injection container that configures and provides all service dependencies.
 
-    Provides:
-        - AWS services configuration (Secrets Manager)
-        - Database connection and session management(sql)
-        - Command handlers
-    """
-    # region = os.environ.get("REGION")
-    # environment = os.environ.get("ENVIRONMENT")
-    # logger.info("Initializing Container")
-    # # AWS and database client setup
-    # secrets_manager_client = boto3.client("secretsmanager", region_name=region)
-    # cache_config = SecretCacheConfig()
-    # secrets_cache = SecretCache(config=cache_config, client=secrets_manager_client)
-    #
-    # secrets = get_secret(secrets_cache, environment)
-    #
-    #
-    #
-    # # SQL client configuration
-    # db_session_maker = providers.Resource(
-    #     get_session_maker,
-    #     database_url=secrets.get("database_url"),
-    # )
-    #
-    # db_session_factory = providers.Resource(
-    #     get_session,
-    #     session_maker=db_session_maker,
-    # )
-    #
-    # unit_of_work = providers.Factory(
-    #     SqlUnitOfWork,
-    #     session=db_session_factory,
-    # )
-    #
-    # # Command handlers configuration
-    # create_prompt_handler = providers.Factory(
-    #     CreatePromptCommandHandler,
-    #     unit_of_work=unit_of_work,
-    # )
-    #
-    # create_agent_chat_bot_handler = providers.Factory(
-    #     CreateAgentChatBotCommandHandler,
-    #     unit_of_work=unit_of_work,
-    # )
-    #
-    # change_settings_agent_chat_bot_handler = providers.Factory(
-    #     ChangeSettingsAgentChatBotCommandHandler,
-    #     unit_of_work=unit_of_work,
-    # )
-    #
-    # update_prompt_text_handler = providers.Factory(
-    #     UpdatePromptTextCommandHandler,
-    #     unit_of_work=unit_of_work,
-    # )
+        Provides:
+            - AWS services configuration (Secrets Manager)
+            - Database connection and session management(sql)
+            - Command handlers
+        """
+        region = os.environ.get("REGION")
+        environment = os.environ.get("ENVIRONMENT")
+        logger.info("Initializing Container")
+        # AWS and database client setup
+        secrets_manager_client = boto3.client("secretsmanager", region_name=region)
+        cache_config = SecretCacheConfig()
+        secrets_cache = SecretCache(config=cache_config, client=secrets_manager_client)
 
-class FastapiContainer(DeclarativeContainer):
-    """
-    Dependency Injection container that configures and provides all service dependencies.
+        secrets = get_secret(secrets_cache, environment)
 
-    Provides:
-        - Database connection and session management(sql)
-        - Command handlers
-    """
-    #Secrets
-    client = hvac.Client(
-        url=os.getenv('VAULT_ADDR', 'http://localhost:8200'),
-        token=os.getenv('VAULT_TOKEN')
-    )
 
-    assert client.is_authenticated()
 
-    secrets = client.secrets.kv.read_secret_version(path=os.getenv('SECRET_PATH'))['data']['data']
+        # SQL client configuration
+        db_session_maker = providers.Resource(
+            get_session_maker,
+            database_url=secrets.get("database_url"),
+        )
 
-    # SQL client configuration
-    db_session_maker = providers.Resource(
-        get_session_maker,
-        database_url=secrets.get("database_url"),
-    )
+        db_session_factory = providers.Resource(
+            get_session,
+            session_maker=db_session_maker,
+        )
 
-    db_session_factory = providers.Resource(
-        get_session,
-        session_maker=db_session_maker,
-    )
+        unit_of_work = providers.Factory(
+            SqlUnitOfWork,
+            session=db_session_factory,
+        )
 
-    unit_of_work = providers.Factory(
-        SqlUnitOfWork,
-        session=db_session_factory,
-    )
+        # Command handlers configuration
+        create_prompt_handler = providers.Factory(
+            CreatePromptCommandHandler,
+            unit_of_work=unit_of_work,
+        )
 
-    # Command handlers configuration
-    create_prompt_handler = providers.Factory(
-        CreatePromptCommandHandler,
-        unit_of_work=unit_of_work,
-    )
+        create_agent_chat_bot_handler = providers.Factory(
+            CreateAgentChatBotCommandHandler,
+            unit_of_work=unit_of_work,
+        )
 
-    create_agent_chat_bot_handler = providers.Factory(
-        CreateAgentChatBotCommandHandler,
-        unit_of_work=unit_of_work,
-    )
+        change_settings_agent_chat_bot_handler = providers.Factory(
+            ChangeSettingsAgentChatBotCommandHandler,
+            unit_of_work=unit_of_work,
+        )
 
-    change_settings_agent_chat_bot_handler = providers.Factory(
-        ChangeSettingsAgentChatBotCommandHandler,
-        unit_of_work=unit_of_work,
-    )
+        update_prompt_text_handler = providers.Factory(
+            UpdatePromptTextCommandHandler,
+            unit_of_work=unit_of_work,
+        )
+elif os.getenv("CONTAINER_TYPE") == "fastapi":
 
-    update_prompt_text_handler = providers.Factory(
-        UpdatePromptTextCommandHandler,
-        unit_of_work=unit_of_work,
-    )
+    def load_secrets():
+        env = os.getenv("ENVIRONMENT")
+
+        if env in ["stg", "prod"]:
+            import hvac
+            client = hvac.Client(
+                url=os.getenv('VAULT_ADDR', 'http://localhost:8200'),
+                token=os.getenv('VAULT_TOKEN')
+            )
+            assert client.is_authenticated(), "Vault authentication failed"
+            return client.secrets.kv.read_secret_version(
+                path=os.getenv('SECRET_PATH')
+            )['data']['data']
+
+        elif env == "dev":
+            import dotenv
+            dotenv.load_dotenv()
+            return {
+                "database_url": os.getenv('DATABASE_URL'),
+            }
+
+        else:
+            raise ValueError(f"Unsupported ENVIRONMENT: {env}")
+
+    class FastapiContainer(DeclarativeContainer):
+        """
+        Dependency Injection container that configures and provides all service dependencies.
+
+        Provides:
+            - Database connection and session management(sql)
+            - Command handlers
+        """
+        #Secrets
+        secrets = load_secrets()
+
+        # SQL client configuration
+        db_session_maker = providers.Resource(
+            get_session_maker,
+            database_url=secrets.get("database_url"),
+        )
+
+        db_session_factory = providers.Resource(
+            get_session,
+            session_maker=db_session_maker,
+        )
+
+        unit_of_work = providers.Factory(
+            SqlUnitOfWork,
+            session=db_session_factory,
+        )
+
+        # Command handlers configuration
+        create_prompt_handler = providers.Factory(
+            CreatePromptCommandHandler,
+            unit_of_work=unit_of_work,
+        )
+
+        create_agent_chat_bot_handler = providers.Factory(
+            CreateAgentChatBotCommandHandler,
+            unit_of_work=unit_of_work,
+        )
+
+        change_settings_agent_chat_bot_handler = providers.Factory(
+            ChangeSettingsAgentChatBotCommandHandler,
+            unit_of_work=unit_of_work,
+        )
+
+        update_prompt_text_handler = providers.Factory(
+            UpdatePromptTextCommandHandler,
+            unit_of_work=unit_of_work,
+        )

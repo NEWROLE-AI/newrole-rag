@@ -4,6 +4,7 @@ from dataclasses import asdict
 from datetime import datetime, UTC, timezone
 
 import hvac
+import motor.motor_asyncio
 from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
@@ -17,10 +18,10 @@ from src.application.exceptions.value_error_exception import (
     CustomValueError,
     ErrorStatus,
 )
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from src.application.models.knowledge_base import KnowledgeBase
 from src.application.models.realtime_resource import RealtimeResource, RealtimeResourceType, RestApi, Database, DbType
 from src.application.models.vectorized_resource import Resource, VectorizedResourceType
-from src.application.ports.database_manager import DatabaseType
 from src.application.ports.unit_of_work import (
     ResourceRepository,
     UnitOfWork,
@@ -88,6 +89,84 @@ class DynamoResourceRepository(ResourceRepository):
         )
         return response.get('Items', [])
 
+
+class MongoResourceRepository(ResourceRepository):
+
+    def __init__(self, mongo_client:  motor.motor_asyncio.AsyncIOMotorClient, resource_table_name: str) -> None:
+        self._mongo_client = mongo_client
+        self._resource_table_name = resource_table_name
+        self.db = self._mongo_client[self._resource_table_name]
+
+    async def add(self, resource: Resource) -> None:
+        collection = self.db["resources"]
+        await collection.insert_one(resource.to_dict())
+
+    async def get_by_knowledge_base_id(self, knowledge_base_id: str) -> list[dict]:
+        collection = self.db["resources"]
+        return await collection.find({"knowledge_base_id": knowledge_base_id}).to_list()
+
+
+class MongoRealtimeResourceRepository:
+    def __init__(self, mongo_client: AsyncIOMotorClient, db_name: str) -> None:
+        self._db = mongo_client[db_name]
+        self._collection: AsyncIOMotorCollection = self._db["resources"]
+
+    async def add(self, resource: RealtimeResource) -> None:
+        """
+        Adds a new realtime resource to MongoDB.
+        """
+        logger.info(f"Adding resource: {resource}")
+
+        item = {
+            "resource_id": resource.resource_id,
+            "knowledge_base_id": resource.knowledge_base_id,
+            "type": resource.type.value,
+        }
+
+        if resource.type == RealtimeResourceType.REST_API:
+            item["url"] = resource.extra.url
+        elif resource.type == RealtimeResourceType.DATABASE:
+            item["connection_params"] = resource.extra.connection_params
+            item["db_type"] = resource.extra.db_type.value
+
+        try:
+            await self._collection.insert_one(item)
+            logger.info(f"Resource {resource.resource_id} added successfully")
+        except Exception as e:
+            logger.error(f"Error adding resource: {e}")
+            raise
+
+    async def get_by_id(self, resource_id: str) -> RealtimeResource:
+        """
+        Fetches a realtime resource by its ID from MongoDB.
+        """
+        logger.info(f"Fetching resource with ID: {resource_id}")
+
+        item = await self._collection.find_one({"resource_id": resource_id})
+        if not item:
+            raise CustomValueError(
+                error_status=ErrorStatus.NOT_FOUND,
+                message=f"Resource with ID {resource_id} not found"
+            )
+
+        resource = RealtimeResource(
+            resource_id=item["resource_id"],
+            knowledge_base_id=item["knowledge_base_id"],
+            type=RealtimeResourceType(item["type"]),
+        )
+
+        # Восстанавливаем extra по типу
+        if item["type"] == RealtimeResourceType.REST_API.value:
+            resource.extra = RestApi(url=item["url"])
+        elif item["type"] == RealtimeResourceType.DATABASE.value:
+            resource.extra = Database(
+                connection_params=item["connection_params"],
+                db_type=DbType(item["db_type"])
+            )
+        else:
+            resource.extra = None
+
+        return resource
 
 
 class SqlResourceRepository(ResourceRepository):
@@ -472,6 +551,95 @@ class VaultManagerDatabaseRepository(DatabaseRepository):
             )
             raise DomainException(f"Failed to store database connection: {str(e)}")
 
+class VaultRealtimeDatabaseRepository:
+    """
+    Repository for managing database connection parameters in HashiCorp Vault.
+    """
+
+    def __init__(self, client: hvac.Client):
+        self._client = client
+        if not self._client.is_authenticated():
+            logger.error("Vault authentication failed")
+            raise DomainException("Could not authenticate to Vault")
+        self._secret_path_prefix = "secret/data/database_info"
+
+    async def add(self, resource: RealtimeResource) -> RealtimeResource:
+        """
+        Store or update database connection parameters in Vault.
+
+        Args:
+            resource (RealtimeResource): Resource containing DB connection params.
+
+        Returns:
+            RealtimeResource: The same resource with .extra.secret_path updated.
+        """
+        if not resource.extra or not hasattr(resource.extra, "connection_params"):
+            logger.error("Invalid resource: missing connection parameters")
+            raise ValueError("Invalid resource: missing connection parameters")
+
+        path = f"{self._secret_path_prefix}/{resource.knowledge_base_id}/{resource.resource_id}"
+
+        secret_data = {
+            "connection_params": resource.extra.connection_params,
+            "query": getattr(resource.extra, "query", None),
+            "metadata": {
+                "resource_id": resource.resource_id,
+                "knowledge_base_id": resource.knowledge_base_id,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
+        }
+
+        try:
+            # Attempt to read the secret first
+            self._client.secrets.kv.v2.read_secret_version(path=path)
+            action = "updated"
+        except hvac.exceptions.InvalidPath:
+            action = "created"
+
+        try:
+            self._client.secrets.kv.v2.create_or_update_secret(
+                path=path,
+                secret=secret_data
+            )
+            logger.info(
+                f"Successfully {action} Vault secret for DB resource",
+                extra={"path": path}
+            )
+            resource.extra.secret_path = path
+            return resource
+        except Exception as e:
+            logger.error(
+                "Failed to store database connection in Vault",
+                extra={"error": str(e), "path": path}
+            )
+            raise DomainException(f"Failed to store database connection: {str(e)}")
+
+    async def get_connection_params_by_id(self, resource_id: str, knowledge_base_id: str) -> dict[str, str]:
+        """
+        Get DB connection params from Vault by resource ID and knowledge base ID.
+
+        Args:
+            resource_id (str): ID of the resource.
+            knowledge_base_id (str): ID of the KB.
+
+        Returns:
+            dict: connection_params.
+        """
+        path = f"{self._secret_path_prefix}/{knowledge_base_id}/{resource_id}"
+
+        try:
+            response = self._client.secrets.kv.v2.read_secret_version(path=path)
+            data = response["data"]["data"]
+            return data.get("connection_params", {})
+        except hvac.exceptions.InvalidPath:
+            logger.warning(f"Secret not found for path: {path}")
+            raise CustomValueError(
+                error_status=ErrorStatus.NOT_FOUND,
+                message=f"Secret not found for resource {resource_id}"
+            )
+        except Exception as e:
+            logger.error(f"Error reading secret from Vault: {e}")
+            raise DomainException(f"Failed to retrieve database connection: {str(e)}")
 
 class SqlRealtimeResourceRepository(RealtimeResourceRepository):
 
@@ -686,19 +854,21 @@ class UnitOfWorkImpl(UnitOfWork):
     It handles commits and ensures repositories are properly initialized and cleaned up.
     """
 
-    resources: DynamoResourceRepository
+    resources: DynamoResourceRepository | MongoResourceRepository
     knowledge_bases: SqlKnowledgeBaseRepository
     slack_channels: DynamoSlackChannelRepository
     databases: SecretsManagerDatabaseRepository | VaultManagerDatabaseRepository
-    realtime_resources: DynamodbRealtimeResourceRepository
-    realtime_databases: SecretRealtimeDatabaseRepository
+    realtime_resources: DynamodbRealtimeResourceRepository | MongoRealtimeResourceRepository
+    realtime_databases: SecretRealtimeDatabaseRepository | VaultRealtimeDatabaseRepository
 
     def __init__(
         self,
         session: AsyncSession,
-        dynamo_client: Client,
         secrets_manager_client,
-        dynamodb_table_name: str,
+        resource_table_name: str,
+        container_type: str,
+        dynamo_client: Client = None,
+        mongo_client: motor.motor_asyncio.AsyncIOMotorClient = None,
     ) -> None:
         """
         Initializes the SqlUnitOfWork with a given SQLAlchemy AsyncSession.
@@ -711,7 +881,9 @@ class UnitOfWorkImpl(UnitOfWork):
         self.session = session
         self._dynamo_client = dynamo_client
         self._secrets_manager_client = secrets_manager_client
-        self._dynamodb_table_name = dynamodb_table_name
+        self._resource_table_name = resource_table_name
+        self._mongo_client = mongo_client
+        self._container_type = container_type
 
     async def commit(self) -> None:
         """
@@ -728,13 +900,20 @@ class UnitOfWorkImpl(UnitOfWork):
             SqlUnitOfWork: The current unit of work instance.
         """
         logger.info("Starting new unit of work")
-        self.resources = DynamoResourceRepository(self._dynamo_client, self._dynamodb_table_name)
+        if self._container_type == "fastapi":
+            self.resources = MongoResourceRepository(self._mongo_client, self._resource_table_name)
+            self.databases = VaultManagerDatabaseRepository(self._secrets_manager_client)
+            self.realtime_resources = MongoRealtimeResourceRepository(self._mongo_client, self._resource_table_name)
+            self.realtime_databases = VaultRealtimeDatabaseRepository(self._secrets_manager_client)
+
+        elif self._container_type == "aws":
+            self.resources = DynamoResourceRepository(self._dynamo_client, self._resource_table_name)
+            self.databases = SecretsManagerDatabaseRepository(self._secrets_manager_client)
+            self.realtime_resources = DynamodbRealtimeResourceRepository(self._dynamo_client, self._resource_table_name)
+            self.realtime_databases = SecretRealtimeDatabaseRepository(self._secrets_manager_client)
+            self.slack_channels = DynamoSlackChannelRepository(self._dynamo_client)
+
         self.knowledge_bases = SqlKnowledgeBaseRepository(self.session)
-        self.slack_channels = DynamoSlackChannelRepository(self._dynamo_client)
-        # self.databases = SecretsManagerDatabaseRepository(self._secrets_manager_client)
-        self.databases = VaultManagerDatabaseRepository(self._secrets_manager_client)
-        self.realtime_resources = DynamodbRealtimeResourceRepository(self._dynamo_client, self._dynamodb_table_name)
-        self.realtime_databases = SecretRealtimeDatabaseRepository(self._secrets_manager_client)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
