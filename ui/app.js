@@ -1,308 +1,4 @@
-
-<old_str>// Firebase configuration
-const firebaseConfig = {
-    apiKey: "your-api-key",
-    authDomain: "your-project.firebaseapp.com",
-    projectId: "your-project-id",
-    storageBucket: "your-project.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "your-app-id"
-};
-
-// Initialize Firebase only if not already initialized
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
-const auth = firebase.auth();
-
-// API Gateway URL
-const API_BASE_URL = 'http://localhost:8000/api/v1';
-
-let authToken = null;
-let currentUser = null;
-
-// Auth state observer
-auth.onAuthStateChanged((user) => {
-    if (user) {
-        currentUser = user;
-        user.getIdToken().then((token) => {
-            authToken = token;
-            document.getElementById('auth-section').classList.add('hidden');
-            document.getElementById('main-dashboard').classList.remove('hidden');
-            document.getElementById('user-info').classList.remove('hidden');
-            document.getElementById('user-email').textContent = user.email;
-        });
-    } else {
-        currentUser = null;
-        authToken = null;
-        document.getElementById('auth-section').classList.remove('hidden');
-        document.getElementById('main-dashboard').classList.add('hidden');
-        document.getElementById('user-info').classList.add('hidden');
-    }
-});
-
-// Authentication functions
-async function register() {
-    const email = document.getElementById('auth-email').value;
-    const password = document.getElementById('auth-password').value;
-    const displayName = document.getElementById('display-name').value;
-    
-    try {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        await userCredential.user.updateProfile({
-            displayName: displayName
-        });
-        
-        // Register user in API Gateway
-        const token = await userCredential.user.getIdToken();
-        await fetch(`${API_BASE_URL}/auth/register`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                email: email,
-                display_name: displayName
-            })
-        });
-        
-        alert('Registration successful!');
-    } catch (error) {
-        alert('Registration failed: ' + error.message);
-    }
-}
-
-async function login() {
-    const email = document.getElementById('auth-email').value;
-    const password = document.getElementById('auth-password').value;
-    
-    try {
-        await auth.signInWithEmailAndPassword(email, password);
-        alert('Login successful!');
-    } catch (error) {
-        alert('Login failed: ' + error.message);
-    }
-}
-
-async function logout() {
-    try {
-        await auth.signOut();
-        alert('Logged out successfully!');
-    } catch (error) {
-        alert('Logout failed: ' + error.message);
-    }
-}
-
-// API helper function
-async function apiCall(endpoint, method = 'GET', data = null) {
-    const config = {
-        method: method,
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
-        }
-    };
-    
-    if (data && method !== 'GET') {
-        config.body = JSON.stringify(data);
-    }
-    
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    return await response.json();
-}
-
-// Prompts functions
-async function createPrompt() {
-    const text = document.getElementById('prompt-text').value;
-    if (!text) {
-        alert('Please enter prompt text');
-        return;
-    }
-    
-    try {
-        const result = await apiCall('/prompts', 'POST', { text: text });
-        alert('Prompt created successfully!');
-        document.getElementById('prompt-text').value = '';
-        loadPrompts();
-    } catch (error) {
-        alert('Failed to create prompt: ' + error.message);
-    }
-}
-
-async function loadPrompts() {
-    try {
-        const result = await apiCall('/prompts');
-        const list = document.getElementById('prompts-list');
-        list.innerHTML = '';
-        
-        result.prompts.forEach(prompt => {
-            const div = document.createElement('div');
-            div.className = 'list-item';
-            div.innerHTML = `<strong>ID:</strong> ${prompt.id}<br><strong>Text:</strong> ${prompt.text}`;
-            list.appendChild(div);
-        });
-    } catch (error) {
-        alert('Failed to load prompts: ' + error.message);
-    }
-}
-
-// Knowledge Bases functions
-async function createKnowledgeBase() {
-    const name = document.getElementById('kb-name').value;
-    if (!name) {
-        alert('Please enter knowledge base name');
-        return;
-    }
-    
-    try {
-        const result = await apiCall('/knowledge-bases', 'POST', { knowledge_base_name: name });
-        alert('Knowledge base created successfully!');
-        document.getElementById('kb-name').value = '';
-        loadKnowledgeBases();
-    } catch (error) {
-        alert('Failed to create knowledge base: ' + error.message);
-    }
-}
-
-async function loadKnowledgeBases() {
-    try {
-        const result = await apiCall('/knowledge-bases');
-        const list = document.getElementById('kb-list');
-        list.innerHTML = '';
-        
-        result.knowledge_bases.forEach(kb => {
-            const div = document.createElement('div');
-            div.className = 'list-item';
-            div.innerHTML = `<strong>ID:</strong> ${kb.id}<br><strong>Name:</strong> ${kb.name}`;
-            list.appendChild(div);
-        });
-    } catch (error) {
-        alert('Failed to load knowledge bases: ' + error.message);
-    }
-}
-
-// Chatbots functions
-async function createChatbot() {
-    const name = document.getElementById('chatbot-name').value;
-    const model = document.getElementById('chatbot-model').value;
-    const temperature = parseFloat(document.getElementById('chatbot-temperature').value);
-    const maxTokens = parseInt(document.getElementById('chatbot-max-tokens').value);
-    const systemPrompt = document.getElementById('chatbot-system-prompt').value;
-    
-    if (!name) {
-        alert('Please enter chatbot name');
-        return;
-    }
-    
-    try {
-        const result = await apiCall('/chatbots', 'POST', {
-            name: name,
-            model: model,
-            temperature: temperature,
-            max_tokens: maxTokens,
-            system_prompt: systemPrompt
-        });
-        alert('Chatbot created successfully!');
-        clearChatbotForm();
-        loadChatbots();
-    } catch (error) {
-        alert('Failed to create chatbot: ' + error.message);
-    }
-}
-
-function clearChatbotForm() {
-    document.getElementById('chatbot-name').value = '';
-    document.getElementById('chatbot-model').value = 'gpt-3.5-turbo';
-    document.getElementById('chatbot-temperature').value = '0.7';
-    document.getElementById('chatbot-max-tokens').value = '1000';
-    document.getElementById('chatbot-system-prompt').value = '';
-}
-
-async function loadChatbots() {
-    try {
-        const result = await apiCall('/chatbots');
-        const list = document.getElementById('chatbots-list');
-        list.innerHTML = '';
-        
-        result.chatbots.forEach(chatbot => {
-            const div = document.createElement('div');
-            div.className = 'list-item';
-            div.innerHTML = `<strong>Name:</strong> ${chatbot.name}<br><strong>Model:</strong> ${chatbot.model}<br><strong>Temperature:</strong> ${chatbot.temperature}`;
-            list.appendChild(div);
-        });
-    } catch (error) {
-        alert('Failed to load chatbots: ' + error.message);
-    }
-}
-
-// Chat functions
-async function sendMessage() {
-    const input = document.getElementById('message-input');
-    const message = input.value.trim();
-    
-    if (!message) return;
-    
-    const conversationId = document.getElementById('conversation-select').value;
-    
-    try {
-        let result;
-        if (conversationId) {
-            // Send message to existing conversation
-            result = await apiCall(`/conversations/${conversationId}/messages`, 'POST', {
-                message: message
-            });
-        } else {
-            // Create new conversation
-            result = await apiCall('/conversations', 'POST', {
-                message: message
-            });
-        }
-        
-        displayMessage(message, 'user');
-        displayMessage(result.response, 'ai');
-        input.value = '';
-        
-        if (!conversationId) {
-            loadConversations();
-        }
-    } catch (error) {
-        alert('Failed to send message: ' + error.message);
-    }
-}
-
-function displayMessage(message, type) {
-    const container = document.getElementById('chat-messages');
-    const div = document.createElement('div');
-    div.className = `message ${type}-message`;
-    div.textContent = message;
-    container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
-}
-
-async function loadConversations() {
-    try {
-        const result = await apiCall('/conversations');
-        const select = document.getElementById('conversation-select');
-        select.innerHTML = '<option value="">Create new conversation</option>';
-        
-        result.conversations.forEach(conv => {
-            const option = document.createElement('option');
-            option.value = conv.id;
-            option.textContent = `${conv.id} - ${new Date(conv.created_at).toLocaleDateString()}`;
-            select.appendChild(option);
-        });
-    } catch (error) {
-        alert('Failed to load conversations: ' + error.message);
-    }
-}
-
-function handleMessageKeyPress(event) {
-    if (event.key === 'Enter') {
-        sendMessage();
-    }
-}</old_str>
-<new_str>// Firebase configuration - Replace with your actual config
+// Firebase configuration - Replace with your actual config
 const firebaseConfig = {
     apiKey: "your-api-key-here",
     authDomain: "your-project.firebaseapp.com",
@@ -312,12 +8,14 @@ const firebaseConfig = {
     appId: "your-app-id-here"
 };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+// Initialize Firebase only if not already initialized
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const auth = firebase.auth();
 
 // API Gateway URL
-const API_BASE_URL = window.location.hostname === 'localhost' ? 
+const API_BASE_URL = window.location.hostname === 'localhost' ?
     'http://localhost:8000/api/v1' : '/api/v1';
 
 let authToken = null;
@@ -325,11 +23,31 @@ let currentUser = null;
 
 // Utility functions
 function showMessage(message, type = 'success') {
-    const messageDiv = document.getElementById('auth-message');
+    const messageDiv = document.getElementById('message-container') || createMessageContainer();
     messageDiv.innerHTML = `<div class="${type}-message">${message}</div>`;
     setTimeout(() => {
         messageDiv.innerHTML = '';
     }, 5000);
+}
+
+function createMessageContainer() {
+    const container = document.createElement('div');
+    container.id = 'message-container';
+    container.style.position = 'fixed';
+    container.style.top = '20px';
+    container.style.right = '20px';
+    container.style.zIndex = '1000';
+    document.body.appendChild(container);
+    return container;
+}
+
+function validateEmail(email) {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+}
+
+function validatePassword(password) {
+    return password.length >= 6;
 }
 
 // Auth state observer
@@ -342,7 +60,7 @@ auth.onAuthStateChanged(async (user) => {
             document.getElementById('main-dashboard').classList.remove('hidden');
             document.getElementById('user-info').classList.remove('hidden');
             document.getElementById('user-email').textContent = user.email;
-            
+
             // Load initial data
             await Promise.all([
                 loadPrompts(),
@@ -352,6 +70,7 @@ auth.onAuthStateChanged(async (user) => {
             ]);
         } catch (error) {
             console.error('Error getting user token:', error);
+            showMessage('Error getting authentication token', 'error');
         }
     } else {
         currentUser = null;
@@ -364,15 +83,25 @@ auth.onAuthStateChanged(async (user) => {
 
 // Authentication functions
 async function register() {
-    const email = document.getElementById('auth-email').value;
+    const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
-    const displayName = document.getElementById('display-name').value;
-    
+    const displayName = document.getElementById('display-name').value.trim();
+
     if (!email || !password) {
         showMessage('Please fill in email and password', 'error');
         return;
     }
-    
+
+    if (!validateEmail(email)) {
+        showMessage('Please enter a valid email address', 'error');
+        return;
+    }
+
+    if (!validatePassword(password)) {
+        showMessage('Password must be at least 6 characters long', 'error');
+        return;
+    }
+
     try {
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         if (displayName) {
@@ -380,10 +109,10 @@ async function register() {
                 displayName: displayName
             });
         }
-        
+
         // Register user in API Gateway
         const token = await userCredential.user.getIdToken();
-        await fetch(`${API_BASE_URL}/auth/register`, {
+        const response = await fetch(`${API_BASE_URL}/auth/register`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -395,7 +124,12 @@ async function register() {
                 display_name: displayName || ''
             })
         });
-        
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Registration failed');
+        }
+
         showMessage('Registration successful!');
         clearAuthForm();
     } catch (error) {
@@ -404,14 +138,19 @@ async function register() {
 }
 
 async function login() {
-    const email = document.getElementById('auth-email').value;
+    const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
-    
+
     if (!email || !password) {
         showMessage('Please fill in email and password', 'error');
         return;
     }
-    
+
+    if (!validateEmail(email)) {
+        showMessage('Please enter a valid email address', 'error');
+        return;
+    }
+
     try {
         await auth.signInWithEmailAndPassword(email, password);
         showMessage('Login successful!');
@@ -441,7 +180,7 @@ async function apiCall(endpoint, method = 'GET', data = null) {
     if (!authToken) {
         throw new Error('Not authenticated');
     }
-    
+
     const config = {
         method: method,
         headers: {
@@ -449,31 +188,44 @@ async function apiCall(endpoint, method = 'GET', data = null) {
             'Authorization': `Bearer ${authToken}`
         }
     };
-    
+
     if (data && method !== 'GET') {
         config.body = JSON.stringify(data);
     }
-    
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || 'API call failed');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorData;
+            try {
+                errorData = JSON.parse(errorText);
+            } catch {
+                errorData = { detail: errorText || 'Unknown error' };
+            }
+            throw new Error(errorData.detail || `HTTP ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+            throw new Error('Unable to connect to server. Please check your connection.');
+        }
+        throw error;
     }
-    
-    return await response.json();
 }
 
 // Prompts functions
 async function createPrompt() {
-    const text = document.getElementById('prompt-text').value;
-    if (!text.trim()) {
+    const text = document.getElementById('prompt-text').value.trim();
+    if (!text) {
         showMessage('Please enter prompt text', 'error');
         return;
     }
-    
+
     try {
-        await apiCall('/prompts', 'POST', { text: text.trim() });
+        await apiCall('/prompts', 'POST', { text: text });
         showMessage('Prompt created successfully!');
         document.getElementById('prompt-text').value = '';
         await loadPrompts();
@@ -487,15 +239,18 @@ async function loadPrompts() {
         const result = await apiCall('/prompts');
         const list = document.getElementById('prompts-list');
         list.innerHTML = '';
-        
-        if (result.prompts && result.prompts.length > 0) {
-            result.prompts.forEach(prompt => {
+
+        // Handle different possible response structures
+        const prompts = result.prompts || result || [];
+
+        if (Array.isArray(prompts) && prompts.length > 0) {
+            prompts.forEach(prompt => {
                 const div = document.createElement('div');
                 div.className = 'list-item';
                 div.innerHTML = `
-                    <h4>Prompt ${prompt.id}</h4>
-                    <p><strong>Text:</strong> ${prompt.text}</p>
-                    <p><strong>Created:</strong> ${new Date(prompt.created_at || Date.now()).toLocaleDateString()}</p>
+                    <h4>Prompt ${prompt.id || 'Unknown'}</h4>
+                    <p><strong>Text:</strong> ${prompt.text || 'No text'}</p>
+                    <p><strong>Created:</strong> ${prompt.created_at ? new Date(prompt.created_at).toLocaleDateString() : 'Unknown'}</p>
                 `;
                 list.appendChild(div);
             });
@@ -504,19 +259,20 @@ async function loadPrompts() {
         }
     } catch (error) {
         showMessage('Failed to load prompts: ' + error.message, 'error');
+        document.getElementById('prompts-list').innerHTML = '<p>Error loading prompts</p>';
     }
 }
 
 // Knowledge Bases functions
 async function createKnowledgeBase() {
-    const name = document.getElementById('kb-name').value;
-    if (!name.trim()) {
+    const name = document.getElementById('kb-name').value.trim();
+    if (!name) {
         showMessage('Please enter knowledge base name', 'error');
         return;
     }
-    
+
     try {
-        await apiCall('/knowledge-bases', 'POST', { knowledge_base_name: name.trim() });
+        await apiCall('/knowledge-bases', 'POST', { knowledge_base_name: name });
         showMessage('Knowledge base created successfully!');
         document.getElementById('kb-name').value = '';
         await loadKnowledgeBases();
@@ -530,24 +286,27 @@ async function loadKnowledgeBases() {
         const result = await apiCall('/knowledge-bases');
         const list = document.getElementById('kb-list');
         const select = document.getElementById('resource-kb-select');
-        
+
         list.innerHTML = '';
         select.innerHTML = '<option value="">Select Knowledge Base</option>';
-        
-        if (result.knowledge_bases && result.knowledge_bases.length > 0) {
-            result.knowledge_bases.forEach(kb => {
+
+        // Handle different possible response structures
+        const knowledgeBases = result.knowledge_bases || result || [];
+
+        if (Array.isArray(knowledgeBases) && knowledgeBases.length > 0) {
+            knowledgeBases.forEach(kb => {
                 const div = document.createElement('div');
                 div.className = 'list-item';
                 div.innerHTML = `
-                    <h4>${kb.name}</h4>
-                    <p><strong>ID:</strong> ${kb.id}</p>
-                    <p><strong>Created:</strong> ${new Date(kb.created_at || Date.now()).toLocaleDateString()}</p>
+                    <h4>${kb.name || kb.knowledge_base_name || 'Unnamed'}</h4>
+                    <p><strong>ID:</strong> ${kb.id || 'Unknown'}</p>
+                    <p><strong>Created:</strong> ${kb.created_at ? new Date(kb.created_at).toLocaleDateString() : 'Unknown'}</p>
                 `;
                 list.appendChild(div);
-                
+
                 const option = document.createElement('option');
-                option.value = kb.id;
-                option.textContent = kb.name;
+                option.value = kb.id || '';
+                option.textContent = kb.name || kb.knowledge_base_name || 'Unnamed';
                 select.appendChild(option);
             });
         } else {
@@ -555,6 +314,7 @@ async function loadKnowledgeBases() {
         }
     } catch (error) {
         showMessage('Failed to load knowledge bases: ' + error.message, 'error');
+        document.getElementById('kb-list').innerHTML = '<p>Error loading knowledge bases</p>';
     }
 }
 
@@ -563,22 +323,22 @@ async function createResource() {
     const knowledgeBaseId = document.getElementById('resource-kb-select').value;
     const resourceType = document.getElementById('resource-type').value;
     const fileType = document.getElementById('resource-file-type').value;
-    
+
     if (!knowledgeBaseId) {
         showMessage('Please select a knowledge base', 'error');
         return;
     }
-    
+
     try {
         const data = {
             knowledge_base_id: knowledgeBaseId,
             resource_type: resourceType
         };
-        
+
         if (fileType) {
             data.file_type = fileType;
         }
-        
+
         const result = await apiCall('/resources', 'POST', data);
         showMessage('Resource created successfully!');
         console.log('Resource creation result:', result);
@@ -589,24 +349,34 @@ async function createResource() {
 
 // Chatbots functions
 async function createChatbot() {
-    const name = document.getElementById('chatbot-name').value;
+    const name = document.getElementById('chatbot-name').value.trim();
     const model = document.getElementById('chatbot-model').value;
     const temperature = parseFloat(document.getElementById('chatbot-temperature').value);
     const maxTokens = parseInt(document.getElementById('chatbot-max-tokens').value);
-    const systemPrompt = document.getElementById('chatbot-system-prompt').value;
-    
-    if (!name.trim()) {
+    const systemPrompt = document.getElementById('chatbot-system-prompt').value.trim();
+
+    if (!name) {
         showMessage('Please enter chatbot name', 'error');
         return;
     }
-    
+
+    if (isNaN(temperature) || temperature < 0 || temperature > 2) {
+        showMessage('Temperature must be between 0 and 2', 'error');
+        return;
+    }
+
+    if (isNaN(maxTokens) || maxTokens < 1) {
+        showMessage('Max tokens must be a positive number', 'error');
+        return;
+    }
+
     try {
         await apiCall('/chatbots', 'POST', {
-            name: name.trim(),
+            name: name,
             model: model,
             temperature: temperature,
             max_tokens: maxTokens,
-            system_prompt: systemPrompt.trim()
+            system_prompt: systemPrompt
         });
         showMessage('Chatbot created successfully!');
         clearChatbotForm();
@@ -629,26 +399,29 @@ async function loadChatbots() {
         const result = await apiCall('/chatbots');
         const list = document.getElementById('chatbots-list');
         const select = document.getElementById('chatbot-select');
-        
+
         list.innerHTML = '';
         select.innerHTML = '<option value="">Select a chatbot</option>';
-        
-        if (result.chatbots && result.chatbots.length > 0) {
-            result.chatbots.forEach(chatbot => {
+
+        // Handle different possible response structures
+        const chatbots = result.chatbots || result || [];
+
+        if (Array.isArray(chatbots) && chatbots.length > 0) {
+            chatbots.forEach(chatbot => {
                 const div = document.createElement('div');
                 div.className = 'list-item';
                 div.innerHTML = `
-                    <h4>${chatbot.name}</h4>
-                    <p><strong>Model:</strong> ${chatbot.model}</p>
-                    <p><strong>Temperature:</strong> ${chatbot.temperature}</p>
-                    <p><strong>Max Tokens:</strong> ${chatbot.max_tokens}</p>
+                    <h4>${chatbot.name || 'Unnamed'}</h4>
+                    <p><strong>Model:</strong> ${chatbot.model || 'Unknown'}</p>
+                    <p><strong>Temperature:</strong> ${chatbot.temperature || 'N/A'}</p>
+                    <p><strong>Max Tokens:</strong> ${chatbot.max_tokens || 'N/A'}</p>
                     ${chatbot.system_prompt ? `<p><strong>System Prompt:</strong> ${chatbot.system_prompt}</p>` : ''}
                 `;
                 list.appendChild(div);
-                
+
                 const option = document.createElement('option');
-                option.value = chatbot.id;
-                option.textContent = chatbot.name;
+                option.value = chatbot.id || '';
+                option.textContent = chatbot.name || 'Unnamed';
                 select.appendChild(option);
             });
         } else {
@@ -656,6 +429,7 @@ async function loadChatbots() {
         }
     } catch (error) {
         showMessage('Failed to load chatbots: ' + error.message, 'error');
+        document.getElementById('chatbots-list').innerHTML = '<p>Error loading chatbots</p>';
     }
 }
 
@@ -664,44 +438,45 @@ async function sendMessage() {
     const input = document.getElementById('message-input');
     const message = input.value.trim();
     const chatbotId = document.getElementById('chatbot-select').value;
-    
+
     if (!message) {
         showMessage('Please enter a message', 'error');
         return;
     }
-    
+
     if (!chatbotId) {
         showMessage('Please select a chatbot', 'error');
         return;
     }
-    
+
     const conversationId = document.getElementById('conversation-select').value;
-    
+
     try {
         displayMessage(message, 'user');
         input.value = '';
-        
+
         let result;
+        const messageData = {
+            message: message,
+            chatbot_id: chatbotId
+        };
+
         if (conversationId) {
             // Send message to existing conversation
-            result = await apiCall(`/conversations/${conversationId}/messages`, 'POST', {
-                message: message,
-                chatbot_id: chatbotId
-            });
+            result = await apiCall(`/conversations/${conversationId}/messages`, 'POST', messageData);
         } else {
             // Create new conversation
-            result = await apiCall('/conversations', 'POST', {
-                message: message,
-                chatbot_id: chatbotId
-            });
+            result = await apiCall('/conversations', 'POST', messageData);
             // Reload conversations to include the new one
             await loadConversations();
         }
-        
-        if (result.response) {
+
+        if (result && result.response) {
             displayMessage(result.response, 'ai');
+        } else {
+            displayMessage('No response received', 'ai');
         }
-        
+
     } catch (error) {
         showMessage('Failed to send message: ' + error.message, 'error');
         displayMessage('Error: ' + error.message, 'ai');
@@ -722,12 +497,16 @@ async function loadConversations() {
         const result = await apiCall('/conversations');
         const select = document.getElementById('conversation-select');
         select.innerHTML = '<option value="">Create new conversation</option>';
-        
-        if (result.conversations && result.conversations.length > 0) {
-            result.conversations.forEach(conv => {
+
+        // Handle different possible response structures
+        const conversations = result.conversations || result || [];
+
+        if (Array.isArray(conversations) && conversations.length > 0) {
+            conversations.forEach(conv => {
                 const option = document.createElement('option');
-                option.value = conv.id;
-                option.textContent = `${conv.id.substring(0, 8)}... - ${new Date(conv.created_at || Date.now()).toLocaleDateString()}`;
+                option.value = conv.id || '';
+                const date = conv.created_at ? new Date(conv.created_at).toLocaleDateString() : 'Unknown date';
+                option.textContent = `${(conv.id || 'Unknown').substring(0, 8)}... - ${date}`;
                 select.appendChild(option);
             });
         }
@@ -744,21 +523,28 @@ function handleMessageKeyPress(event) {
 }
 
 // Load conversation messages when conversation is selected
-document.getElementById('conversation-select').addEventListener('change', async function() {
-    const conversationId = this.value;
-    const chatContainer = document.getElementById('chat-messages');
-    
-    if (conversationId) {
-        try {
-            // Clear current messages
-            chatContainer.innerHTML = '';
-            // Note: You might want to add an endpoint to get conversation messages
-            // const result = await apiCall(`/conversations/${conversationId}/messages`);
-            // Display messages...
-        } catch (error) {
-            showMessage('Failed to load conversation messages: ' + error.message, 'error');
-        }
-    } else {
-        chatContainer.innerHTML = '';
+document.addEventListener('DOMContentLoaded', function() {
+    const conversationSelect = document.getElementById('conversation-select');
+    if (conversationSelect) {
+        conversationSelect.addEventListener('change', async function() {
+            const conversationId = this.value;
+            const chatContainer = document.getElementById('chat-messages');
+
+            if (conversationId) {
+                try {
+                    // Clear current messages
+                    chatContainer.innerHTML = '<p>Loading conversation...</p>';
+                    // Note: You might want to add an endpoint to get conversation messages
+                    // const result = await apiCall(`/conversations/${conversationId}/messages`);
+                    // Display messages...
+                    chatContainer.innerHTML = '<p>Conversation selected. Start chatting!</p>';
+                } catch (error) {
+                    showMessage('Failed to load conversation messages: ' + error.message, 'error');
+                    chatContainer.innerHTML = '<p>Error loading conversation</p>';
+                }
+            } else {
+                chatContainer.innerHTML = '';
+            }
+        });
     }
-});</new_str>
+});

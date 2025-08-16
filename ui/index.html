@@ -1,223 +1,15 @@
 
-<old_str><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Assistant Dashboard</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
-        }
-        .auth-section {
-            margin-bottom: 20px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input, textarea, select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+        * {
             box-sizing: border-box;
         }
-        button {
-            background-color: #007bff;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-right: 10px;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .section {
-            margin-bottom: 30px;
-        }
-        .section h2 {
-            color: #333;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 10px;
-        }
-        .chat-container {
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            height: 400px;
-            overflow-y: auto;
-            padding: 10px;
-            margin-bottom: 10px;
-            background-color: #fafafa;
-        }
-        .message {
-            margin-bottom: 10px;
-            padding: 10px;
-            border-radius: 4px;
-        }
-        .user-message {
-            background-color: #007bff;
-            color: white;
-            margin-left: 20%;
-        }
-        .ai-message {
-            background-color: #e9ecef;
-            margin-right: 20%;
-        }
-        .list-item {
-            background-color: #f8f9fa;
-            padding: 10px;
-            margin-bottom: 5px;
-            border-radius: 4px;
-            border-left: 4px solid #007bff;
-        }
-        .hidden { display: none; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>AI Assistant Dashboard</h1>
-            <div id="user-info" class="hidden">
-                <span id="user-email"></span>
-                <button onclick="logout()">Logout</button>
-            </div>
-        </div>
 
-        <!-- Auth Section -->
-        <div id="auth-section" class="auth-section">
-            <h2>Login / Register</h2>
-            <div class="form-group">
-                <label>Email:</label>
-                <input type="email" id="auth-email" placeholder="Enter your email">
-            </div>
-            <div class="form-group">
-                <label>Password:</label>
-                <input type="password" id="auth-password" placeholder="Enter your password">
-            </div>
-            <div class="form-group">
-                <label>Display Name (for registration):</label>
-                <input type="text" id="display-name" placeholder="Your display name">
-            </div>
-            <button onclick="login()">Login</button>
-            <button onclick="register()">Register</button>
-        </div>
-
-        <!-- Main Dashboard -->
-        <div id="main-dashboard" class="hidden">
-            <!-- Prompts Section -->
-            <div class="section">
-                <h2>Prompts Management</h2>
-                <div class="form-group">
-                    <label>Prompt Text:</label>
-                    <textarea id="prompt-text" placeholder="Enter your prompt text" rows="3"></textarea>
-                </div>
-                <button onclick="createPrompt()">Create Prompt</button>
-                <button onclick="loadPrompts()">Load Prompts</button>
-                <div id="prompts-list"></div>
-            </div>
-
-            <!-- Knowledge Bases Section -->
-            <div class="section">
-                <h2>Knowledge Bases</h2>
-                <div class="form-group">
-                    <label>Knowledge Base Name:</label>
-                    <input type="text" id="kb-name" placeholder="Enter knowledge base name">
-                </div>
-                <button onclick="createKnowledgeBase()">Create Knowledge Base</button>
-                <button onclick="loadKnowledgeBases()">Load Knowledge Bases</button>
-                <div id="kb-list"></div>
-            </div>
-
-            <!-- Chatbots Section -->
-            <div class="section">
-                <h2>Chatbots Management</h2>
-                <div class="form-group">
-                    <label>Chatbot Name:</label>
-                    <input type="text" id="chatbot-name" placeholder="Enter chatbot name">
-                </div>
-                <div class="form-group">
-                    <label>Model:</label>
-                    <select id="chatbot-model">
-                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                        <option value="gpt-4">GPT-4</option>
-                        <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Temperature:</label>
-                    <input type="number" id="chatbot-temperature" value="0.7" min="0" max="2" step="0.1">
-                </div>
-                <div class="form-group">
-                    <label>Max Tokens:</label>
-                    <input type="number" id="chatbot-max-tokens" value="1000" min="1" max="4000">
-                </div>
-                <div class="form-group">
-                    <label>System Prompt:</label>
-                    <textarea id="chatbot-system-prompt" placeholder="Enter system prompt" rows="2"></textarea>
-                </div>
-                <button onclick="createChatbot()">Create Chatbot</button>
-                <button onclick="loadChatbots()">Load Chatbots</button>
-                <div id="chatbots-list"></div>
-            </div>
-
-            <!-- Chat Section -->
-            <div class="section">
-                <h2>Chat</h2>
-                <div class="form-group">
-                    <label>Select Conversation:</label>
-                    <select id="conversation-select">
-                        <option value="">Create new conversation</option>
-                    </select>
-                </div>
-                <div class="chat-container" id="chat-messages"></div>
-                <div class="form-group">
-                    <input type="text" id="message-input" placeholder="Type your message..." onkeypress="handleMessageKeyPress(event)">
-                </div>
-                <button onclick="sendMessage()">Send Message</button>
-                <button onclick="loadConversations()">Load Conversations</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
-    <script src="app.js"></script>
-</body>
-</html></old_str>
-<new_str><!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Assistant Dashboard</title>
-    <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
@@ -225,6 +17,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
         }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -233,6 +26,7 @@
             border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
+
         .header {
             display: flex;
             justify-content: space-between;
@@ -240,39 +34,53 @@
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 2px solid #eee;
+            flex-wrap: wrap;
+            gap: 15px;
         }
+
         .header h1 {
             color: #333;
             margin: 0;
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
         }
+
         .auth-section {
             margin-bottom: 20px;
             background: #f8f9fa;
             padding: 20px;
             border-radius: 8px;
         }
+
         .form-group {
             margin-bottom: 15px;
         }
+
         label {
             display: block;
             margin-bottom: 5px;
             font-weight: 600;
             color: #333;
         }
+
         input, textarea, select {
             width: 100%;
             padding: 12px;
             border: 2px solid #ddd;
             border-radius: 6px;
-            box-sizing: border-box;
             font-size: 14px;
-            transition: border-color 0.3s;
+            transition: border-color 0.3s, box-shadow 0.3s;
         }
+
         input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
         }
+
+        input:invalid, textarea:invalid {
+            border-color: #dc3545;
+        }
+
         button {
             background: linear-gradient(135deg, #007bff, #0056b3);
             color: white;
@@ -283,23 +91,37 @@
             margin-right: 10px;
             margin-bottom: 10px;
             font-weight: 600;
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
+            min-width: 120px;
         }
-        button:hover {
+
+        button:hover:not(:disabled) {
             transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .section {
             margin-bottom: 40px;
             padding: 20px;
             background: #f8f9fa;
             border-radius: 8px;
         }
+
         .section h2 {
             color: #333;
             border-bottom: 3px solid #007bff;
             padding-bottom: 10px;
             margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
+
         .chat-container {
             border: 2px solid #ddd;
             border-radius: 8px;
@@ -308,23 +130,29 @@
             padding: 15px;
             margin-bottom: 15px;
             background-color: white;
+            scroll-behavior: smooth;
         }
+
         .message {
             margin-bottom: 15px;
             padding: 12px;
             border-radius: 8px;
             max-width: 80%;
+            word-wrap: break-word;
         }
+
         .user-message {
             background: linear-gradient(135deg, #007bff, #0056b3);
             color: white;
             margin-left: auto;
             text-align: right;
         }
+
         .ai-message {
             background-color: #e9ecef;
             color: #333;
         }
+
         .list-item {
             background-color: white;
             padding: 15px;
@@ -332,17 +160,28 @@
             border-radius: 6px;
             border-left: 4px solid #007bff;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
         }
+
+        .list-item:hover {
+            transform: translateX(5px);
+        }
+
         .list-item h4 {
             margin: 0 0 10px 0;
             color: #333;
         }
+
         .list-item p {
             margin: 5px 0;
             color: #666;
             font-size: 14px;
         }
-        .hidden { display: none; }
+
+        .hidden { 
+            display: none !important; 
+        }
+
         .user-info {
             background: linear-gradient(135deg, #28a745, #20c997);
             color: white;
@@ -351,22 +190,81 @@
             display: flex;
             align-items: center;
             gap: 15px;
+            flex-wrap: wrap;
         }
+
         .success-message {
             background-color: #d4edda;
             border: 1px solid #c3e6cb;
             color: #155724;
-            padding: 10px;
-            border-radius: 4px;
+            padding: 12px;
+            border-radius: 6px;
             margin-bottom: 15px;
+            border-left: 4px solid #28a745;
         }
+
         .error-message {
             background-color: #f8d7da;
             border: 1px solid #f5c6cb;
             color: #721c24;
-            padding: 10px;
-            border-radius: 4px;
+            padding: 12px;
+            border-radius: 6px;
             margin-bottom: 15px;
+            border-left: 4px solid #dc3545;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+                margin: 10px;
+            }
+
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .section {
+                padding: 15px;
+            }
+
+            .user-info {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            button {
+                width: 100%;
+                margin-right: 0;
+            }
+
+            .message {
+                max-width: 95%;
+            }
+        }
+
+        /* Accessibility improvements */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Focus indicators for keyboard navigation */
+        button:focus-visible,
+        input:focus-visible,
+        textarea:focus-visible,
+        select:focus-visible {
+            outline: 2px solid #007bff;
+            outline-offset: 2px;
         }
     </style>
 </head>
@@ -376,7 +274,7 @@
             <h1>🤖 AI Assistant Dashboard</h1>
             <div id="user-info" class="user-info hidden">
                 <span id="user-email"></span>
-                <button onclick="logout()">Logout</button>
+                <button onclick="logout()" type="button">Logout</button>
             </div>
         </div>
 
@@ -384,20 +282,22 @@
         <div id="auth-section" class="auth-section">
             <h2>🔐 Login / Register</h2>
             <div id="auth-message"></div>
-            <div class="form-group">
-                <label>Email:</label>
-                <input type="email" id="auth-email" placeholder="Enter your email">
-            </div>
-            <div class="form-group">
-                <label>Password:</label>
-                <input type="password" id="auth-password" placeholder="Enter your password">
-            </div>
-            <div class="form-group">
-                <label>Display Name (for registration):</label>
-                <input type="text" id="display-name" placeholder="Your display name">
-            </div>
-            <button onclick="login()">Login</button>
-            <button onclick="register()">Register</button>
+            <form onsubmit="return false;">
+                <div class="form-group">
+                    <label for="auth-email">Email:</label>
+                    <input type="email" id="auth-email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="auth-password">Password:</label>
+                    <input type="password" id="auth-password" placeholder="Enter your password" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label for="display-name">Display Name (for registration):</label>
+                    <input type="text" id="display-name" placeholder="Your display name">
+                </div>
+                <button type="button" onclick="login()">Login</button>
+                <button type="button" onclick="register()">Register</button>
+            </form>
         </div>
 
         <!-- Main Dashboard -->
@@ -406,44 +306,44 @@
             <div class="section">
                 <h2>📝 Prompts Management</h2>
                 <div class="form-group">
-                    <label>Prompt Text:</label>
-                    <textarea id="prompt-text" placeholder="Enter your prompt text" rows="4"></textarea>
+                    <label for="prompt-text">Prompt Text:</label>
+                    <textarea id="prompt-text" placeholder="Enter your prompt text" rows="4" required></textarea>
                 </div>
-                <button onclick="createPrompt()">Create Prompt</button>
-                <button onclick="loadPrompts()">Load Prompts</button>
-                <div id="prompts-list"></div>
+                <button type="button" onclick="createPrompt()">Create Prompt</button>
+                <button type="button" onclick="loadPrompts()">Refresh Prompts</button>
+                <div id="prompts-list" role="region" aria-label="Prompts list"></div>
             </div>
 
             <!-- Knowledge Bases Section -->
             <div class="section">
                 <h2>📚 Knowledge Bases</h2>
                 <div class="form-group">
-                    <label>Knowledge Base Name:</label>
-                    <input type="text" id="kb-name" placeholder="Enter knowledge base name">
+                    <label for="kb-name">Knowledge Base Name:</label>
+                    <input type="text" id="kb-name" placeholder="Enter knowledge base name" required>
                 </div>
-                <button onclick="createKnowledgeBase()">Create Knowledge Base</button>
-                <button onclick="loadKnowledgeBases()">Load Knowledge Bases</button>
-                <div id="kb-list"></div>
+                <button type="button" onclick="createKnowledgeBase()">Create Knowledge Base</button>
+                <button type="button" onclick="loadKnowledgeBases()">Refresh Knowledge Bases</button>
+                <div id="kb-list" role="region" aria-label="Knowledge bases list"></div>
             </div>
 
             <!-- Resources Section -->
             <div class="section">
                 <h2>📄 Resources Management</h2>
                 <div class="form-group">
-                    <label>Knowledge Base:</label>
-                    <select id="resource-kb-select">
+                    <label for="resource-kb-select">Knowledge Base:</label>
+                    <select id="resource-kb-select" required>
                         <option value="">Select Knowledge Base</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Resource Type:</label>
+                    <label for="resource-type">Resource Type:</label>
                     <select id="resource-type">
                         <option value="VECTORIZED">Vectorized</option>
                         <option value="REALTIME">Realtime</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>File Type (optional):</label>
+                    <label for="resource-file-type">File Type (optional):</label>
                     <select id="resource-file-type">
                         <option value="">Select file type</option>
                         <option value="PDF">PDF</option>
@@ -451,19 +351,19 @@
                         <option value="DOCX">Word Document</option>
                     </select>
                 </div>
-                <button onclick="createResource()">Create Resource</button>
-                <div id="resources-list"></div>
+                <button type="button" onclick="createResource()">Create Resource</button>
+                <div id="resources-list" role="region" aria-label="Resources list"></div>
             </div>
 
             <!-- Chatbots Section -->
             <div class="section">
                 <h2>🤖 Chatbots Management</h2>
                 <div class="form-group">
-                    <label>Chatbot Name:</label>
-                    <input type="text" id="chatbot-name" placeholder="Enter chatbot name">
+                    <label for="chatbot-name">Chatbot Name:</label>
+                    <input type="text" id="chatbot-name" placeholder="Enter chatbot name" required>
                 </div>
                 <div class="form-group">
-                    <label>Model:</label>
+                    <label for="chatbot-model">Model:</label>
                     <select id="chatbot-model">
                         <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                         <option value="gpt-4">GPT-4</option>
@@ -471,43 +371,44 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Temperature:</label>
-                    <input type="number" id="chatbot-temperature" value="0.7" min="0" max="2" step="0.1">
+                    <label for="chatbot-temperature">Temperature:</label>
+                    <input type="number" id="chatbot-temperature" value="0.7" min="0" max="2" step="0.1" required>
                 </div>
                 <div class="form-group">
-                    <label>Max Tokens:</label>
-                    <input type="number" id="chatbot-max-tokens" value="1000" min="1" max="4000">
+                    <label for="chatbot-max-tokens">Max Tokens:</label>
+                    <input type="number" id="chatbot-max-tokens" value="1000" min="1" max="4000" required>
                 </div>
                 <div class="form-group">
-                    <label>System Prompt:</label>
+                    <label for="chatbot-system-prompt">System Prompt:</label>
                     <textarea id="chatbot-system-prompt" placeholder="Enter system prompt" rows="3"></textarea>
                 </div>
-                <button onclick="createChatbot()">Create Chatbot</button>
-                <button onclick="loadChatbots()">Load Chatbots</button>
-                <div id="chatbots-list"></div>
+                <button type="button" onclick="createChatbot()">Create Chatbot</button>
+                <button type="button" onclick="loadChatbots()">Refresh Chatbots</button>
+                <div id="chatbots-list" role="region" aria-label="Chatbots list"></div>
             </div>
 
             <!-- Chat Section -->
             <div class="section">
                 <h2>💬 Chat</h2>
                 <div class="form-group">
-                    <label>Select Chatbot:</label>
-                    <select id="chatbot-select">
+                    <label for="chatbot-select">Select Chatbot:</label>
+                    <select id="chatbot-select" required>
                         <option value="">Select a chatbot</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Select Conversation:</label>
+                    <label for="conversation-select">Select Conversation:</label>
                     <select id="conversation-select">
                         <option value="">Create new conversation</option>
                     </select>
                 </div>
-                <div class="chat-container" id="chat-messages"></div>
+                <div class="chat-container" id="chat-messages" role="log" aria-label="Chat messages"></div>
                 <div class="form-group">
-                    <input type="text" id="message-input" placeholder="Type your message..." onkeypress="handleMessageKeyPress(event)">
+                    <label for="message-input">Message:</label>
+                    <input type="text" id="message-input" placeholder="Type your message..." onkeypress="handleMessageKeyPress(event)" required>
                 </div>
-                <button onclick="sendMessage()">Send Message</button>
-                <button onclick="loadConversations()">Load Conversations</button>
+                <button type="button" onclick="sendMessage()">Send Message</button>
+                <button type="button" onclick="loadConversations()">Refresh Conversations</button>
             </div>
         </div>
     </div>
@@ -517,4 +418,4 @@
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
     <script src="app.js"></script>
 </body>
-</html></new_str>
+</html>
