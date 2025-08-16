@@ -12,6 +12,7 @@ import httpx
 import firebase_admin
 from firebase_admin import credentials, auth
 from dotenv import load_dotenv
+import base64
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -36,28 +37,46 @@ if vault_available:
     except Exception as e:
         logger.warning(f"Failed to get secrets from Vault: {e}, using environment variables")
 
-# Initialize Firebase Admin SDK (skip in development if credentials not available)
+# Firebase configuration
 try:
-    if all([os.getenv('FIREBASE_PROJECT_ID'), os.getenv('FIREBASE_PRIVATE_KEY'), os.getenv('FIREBASE_CLIENT_EMAIL')]):
-        cred = credentials.Certificate({
-            'type': 'service_account',
-            'project_id': os.getenv('FIREBASE_PROJECT_ID'),
-            'private_key_id': 'demo-key-id',
-            'private_key': os.getenv('FIREBASE_PRIVATE_KEY').replace('\\n', '\n'),
-            'client_email': os.getenv('FIREBASE_CLIENT_EMAIL'),
-            'client_id': 'demo-client-id',
-            'auth_uri': 'https://accounts.google.com/o/oauth2/auth',
-            'token_uri': 'https://oauth2.googleapis.com/token',
-            'auth_provider_x509_cert_url': 'https://www.googleapis.com/oauth2/v1/certs',
-            'client_x509_cert_url': f'https://www.googleapis.com/robot/v1/metadata/x509/{os.getenv("FIREBASE_CLIENT_EMAIL")}'
-        })
+    firebase_project_id = os.getenv("FIREBASE_PROJECT_ID")
+    firebase_private_key = os.getenv("FIREBASE_PRIVATE_KEY")
+    firebase_client_email = os.getenv("FIREBASE_CLIENT_EMAIL")
+
+    if firebase_project_id and firebase_private_key and firebase_client_email:
+        # Clean private key format
+        private_key = firebase_private_key.replace('\\n', '\n')
+        if not private_key.startswith('-----BEGIN'):
+            # If it's base64 encoded, decode it
+            try:
+                private_key = base64.b64decode(firebase_private_key).decode('utf-8')
+            except Exception as e:
+                logger.warning(f"Failed to decode private key: {e}")
+
+
+        firebase_config = {
+            "type": "service_account",
+            "project_id": firebase_project_id,
+            "private_key": private_key,
+            "client_email": firebase_client_email,
+            "client_id": "", # Client ID is not strictly required for service account authentication
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{firebase_client_email}"
+        }
+
+        cred = credentials.Certificate(firebase_config)
         firebase_admin.initialize_app(cred)
         logger.info("Firebase Admin SDK initialized successfully")
+        FIREBASE_ENABLED = True
     else:
-        logger.warning("Firebase credentials not found, running in development mode")
+        logger.warning("Firebase credentials not found, continuing without Firebase authentication")
+        FIREBASE_ENABLED = False
 except Exception as e:
     logger.error(f"Failed to initialize Firebase: {e}")
     logger.warning("Continuing without Firebase authentication")
+    FIREBASE_ENABLED = False
 
 app = FastAPI(title="AI Assistant API Gateway", version="1.0.0")
 
@@ -79,6 +98,11 @@ CONVERSATION_URL = os.getenv("CONVERSATION_URL", "http://conversation:8000")
 
 async def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
     """Verify Firebase ID token and return user info"""
+    if not FIREBASE_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Firebase is not enabled or initialized"
+        )
     try:
         decoded_token = auth.verify_id_token(credentials.credentials)
         return decoded_token
@@ -92,6 +116,11 @@ async def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depe
 @app.post("/api/v1/auth/register")
 async def register_user(user_data: dict):
     """Register a new user"""
+    if not FIREBASE_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Firebase is not enabled or initialized"
+        )
     try:
         # Create user in Firebase
         user = auth.create_user(
@@ -127,6 +156,7 @@ async def get_prompts(user: dict = Depends(verify_firebase_token)):
             f"{ADMIN_PANEL_URL}/api/v1/prompts",
             headers={"X-User-ID": user["uid"]}
         )
+        response.raise_for_status()
         return response.json()
 
 @app.post("/api/v1/prompts")
@@ -138,6 +168,7 @@ async def create_prompt(prompt_data: dict, user: dict = Depends(verify_firebase_
             json=prompt_data,
             headers={"X-User-ID": user["uid"]}
         )
+        response.raise_for_status()
         return response.json()
 
 @app.get("/api/v1/chatbots")
@@ -147,6 +178,7 @@ async def get_chatbots(user: dict = Depends(verify_firebase_token)):
             f"{ADMIN_PANEL_URL}/api/v1/chatbots",
             headers={"X-User-ID": user["uid"]}
         )
+        response.raise_for_status()
         return response.json()
 
 @app.post("/api/v1/chatbots")
@@ -158,6 +190,7 @@ async def create_chatbot(chatbot_data: dict, user: dict = Depends(verify_firebas
             json=chatbot_data,
             headers={"X-User-ID": user["uid"]}
         )
+        response.raise_for_status()
         return response.json()
 
 # Source Management endpoints
@@ -168,6 +201,7 @@ async def get_knowledge_bases(user: dict = Depends(verify_firebase_token)):
             f"{SOURCE_MANAGEMENT_URL}/api/v1/knowledge-bases",
             headers={"X-User-ID": user["uid"]}
         )
+        response.raise_for_status()
         return response.json()
 
 @app.post("/api/v1/knowledge-bases")
@@ -179,6 +213,7 @@ async def create_knowledge_base(kb_data: dict, user: dict = Depends(verify_fireb
             json=kb_data,
             headers={"X-User-ID": user["uid"]}
         )
+        response.raise_for_status()
         return response.json()
 
 @app.post("/api/v1/resources")
@@ -190,6 +225,7 @@ async def create_resource(resource_data: dict, user: dict = Depends(verify_fireb
             json=resource_data,
             headers={"X-User-ID": user["uid"]}
         )
+        response.raise_for_status()
         return response.json()
 
 @app.post("/api/v1/data/retrieve")
@@ -200,6 +236,7 @@ async def retrieve_data(data_request: dict, user: dict = Depends(verify_firebase
             json=data_request,
             headers={"X-User-ID": user["uid"]}
         )
+        response.raise_for_status()
         return response.json()
 
 # Conversation endpoints
@@ -210,6 +247,7 @@ async def get_conversations(user: dict = Depends(verify_firebase_token)):
             f"{CONVERSATION_URL}/api/v1/conversations",
             headers={"X-User-ID": user["uid"]}
         )
+        response.raise_for_status()
         return response.json()
 
 @app.post("/api/v1/conversations")
@@ -221,6 +259,7 @@ async def create_conversation(conv_data: dict, user: dict = Depends(verify_fireb
             json=conv_data,
             headers={"X-User-ID": user["uid"]}
         )
+        response.raise_for_status()
         return response.json()
 
 @app.post("/api/v1/conversations/{conversation_id}/messages")
@@ -265,6 +304,9 @@ async def update_prompt(prompt_id: str, prompt_data: dict, user: dict = Depends(
             return response.json()
     except httpx.RequestError:
         raise HTTPException(status_code=503, detail="Admin panel service unavailable")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Admin panel service returned error: {e}")
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
 
 @app.get("/api/v1/resources/{knowledge_base_id}")
 async def get_resources_by_kb(knowledge_base_id: str, user: dict = Depends(verify_firebase_token)):
@@ -278,6 +320,9 @@ async def get_resources_by_kb(knowledge_base_id: str, user: dict = Depends(verif
             return response.json()
     except httpx.RequestError:
         raise HTTPException(status_code=503, detail="Source management service unavailable")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Source management service returned error: {e}")
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
 
 @app.get("/api/v1/health")
 async def health_check():

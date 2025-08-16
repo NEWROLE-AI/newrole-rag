@@ -5,7 +5,15 @@ compile = "make"
 channel = "stable-25_05"
 
 [deployment]
-build = ["sh", "-c", "make"]
+run = ["sh", "-c", "cd ui && python -m http.server 3000"]
+
+[[ports]]
+localPort = 8000
+externalPort = 80
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
 
 [workflows]
 runButton = "Start All Services"
@@ -72,11 +80,3 @@ args = "cd source_management && python -c \"from src.adapters.database.models im
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd conversation && python -c \"from src.adapters.database.sql_db import Base; from sqlalchemy import create_engine; engine = create_engine('sqlite:///./conversation.db'); Base.metadata.create_all(engine)\""
-
-[[ports]]
-localPort = 3000
-externalPort = 80
-
-[[ports]]
-localPort = 8000
-externalPort = 8000

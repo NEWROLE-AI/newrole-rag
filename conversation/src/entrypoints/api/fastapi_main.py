@@ -1,45 +1,24 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from .fastapi_handlers import router
 
-from src.entrypoints.api import fastapi_handlers
-from src.entrypoints.api.ioc import FastapiContainer
+app = FastAPI(title="Conversation API", version="1.0.0")
 
-"asd".upper()
-class ServiceBootStrap:
-    """
-    Bootstrap class for initializing and configuring the FastAPI service.
-    Handles dependency injection container setup and CORS middleware configuration.
+# Setup CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure this properly for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    Attributes:
-        API_ROUTE_PREFIX: Prefix for the FastAPI routes.
-    """
+app.include_router(router)
 
-    API_ROUTE_PREFIX: str = "/api"
+@app.get("/")
+async def root():
+    return {"message": "Conversation API is running"}
 
-    @staticmethod
-    def create_service_api() -> FastAPI:
-        """
-        Creates and configures a new FastAPI application instance.
-
-        Returns:
-            FastAPI: Configured FastAPI application instance
-        """
-        container = FastapiContainer()
-        container.init_resources()
-        service_api: FastAPI = FastAPI()
-        service_api.container = container
-        service_api.include_router(
-            fastapi_handlers.router,
-            prefix=ServiceBootStrap.API_ROUTE_PREFIX,
-        )
-        service_api.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
-        return service_api
-
-
-app = ServiceBootStrap.create_service_api()
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
