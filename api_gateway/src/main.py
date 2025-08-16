@@ -193,13 +193,63 @@ async def create_conversation(conv_data: dict, user: dict = Depends(verify_fireb
 @app.post("/api/v1/conversations/{conversation_id}/messages")
 async def send_message(conversation_id: str, message_data: dict, user: dict = Depends(verify_firebase_token)):
     message_data["user_id"] = user["uid"]
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{CONVERSATION_URL}/api/v1/conversations/{conversation_id}/messages",
-            json=message_data,
-            headers={"X-User-ID": user["uid"]}
-        )
-        return response.json()
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{CONVERSATION_URL}/api/v1/conversations/{conversation_id}/messages",
+                json=message_data,
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.RequestError as e:
+        logger.error(f"Request to conversation service failed: {e}")
+        raise HTTPException(status_code=503, detail="Conversation service unavailable")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Conversation service returned error: {e}")
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+
+@app.get("/api/v1/users/profile")
+async def get_user_profile(user: dict = Depends(verify_firebase_token)):
+    """Get current user profile"""
+    return {
+        "user_id": user["uid"],
+        "email": user.get("email"),
+        "display_name": user.get("name", ""),
+        "email_verified": user.get("email_verified", False)
+    }
+
+@app.put("/api/v1/prompts/{prompt_id}")
+async def update_prompt(prompt_id: str, prompt_data: dict, user: dict = Depends(verify_firebase_token)):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.put(
+                f"{ADMIN_PANEL_URL}/api/v1/prompts",
+                json={"prompt_id": prompt_id, **prompt_data},
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.RequestError:
+        raise HTTPException(status_code=503, detail="Admin panel service unavailable")
+
+@app.get("/api/v1/resources/{knowledge_base_id}")
+async def get_resources_by_kb(knowledge_base_id: str, user: dict = Depends(verify_firebase_token)):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{SOURCE_MANAGEMENT_URL}/api/v1/resources/{knowledge_base_id}",
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.RequestError:
+        raise HTTPException(status_code=503, detail="Source management service unavailable")
+
+@app.get("/api/v1/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "timestamp": "2024-01-01T00:00:00Z"}
 
 if __name__ == "__main__":
     import uvicorn

@@ -21,4 +21,16 @@ args = "cd api_gateway && python src/main.py"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = "cd admin_panel && python -m uvicorn src.entrypoints.api.fastapi_main:app --host 0.0.0.0 --port 8001"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd source_management && python -m uvicorn src.entrypoints.api.fastapi_main:app --host 0.0.0.0 --port 8002"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd conversation && python -m uvicorn src.entrypoints.api.fastapi_main:app --host 0.0.0.0 --port 8003"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "cd ui && python -m http.server 3000"

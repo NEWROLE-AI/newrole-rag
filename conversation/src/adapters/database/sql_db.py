@@ -3,12 +3,13 @@ from typing import AsyncGenerator
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, String, DateTime, ForeignKey
+from sqlalchemy import Column, String, DateTime, ForeignKey, create_engine, MetaData
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.orm import relationship, declarative_base, sessionmaker
 
 
 Base = declarative_base()
+metadata = MetaData()
 
 def get_session_maker(database_url: str) -> async_sessionmaker[AsyncSession]:
     """
@@ -78,3 +79,8 @@ class Conversation(Base):
 
     # Relationships
     user = relationship("User", back_populates="conversations")
+
+# Database connection for conversation service (using the modified Base and MetaData)
+DATABASE_URL_CONVERSATION = os.getenv("DATABASE_URL", "sqlite:///conversation.db")
+engine_conversation = create_engine(DATABASE_URL_CONVERSATION)
+SessionLocal_conversation = sessionmaker(autocommit=False, autoflush=False, bind=engine_conversation)
