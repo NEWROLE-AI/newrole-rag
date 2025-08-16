@@ -13,6 +13,17 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Try to get secrets from Vault, fallback to environment variables
+try:
+    from vault_client import get_vault_secrets
+    vault_secrets = get_vault_secrets()
+    os.environ.update({k: v for k, v in vault_secrets.items() if v})
+    logger.info("Using secrets from Vault")
+except ImportError:
+    logger.info("Vault client not available, using environment variables")
+except Exception as e:
+    logger.warning(f"Failed to get secrets from Vault: {e}, using environment variables")
+
 # Initialize Firebase Admin SDK
 if not firebase_admin._apps:
     cred = credentials.Certificate({

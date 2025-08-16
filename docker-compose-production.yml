@@ -1,0 +1,88 @@
+
+version: '3.8'
+
+services:
+  vault:
+    image: hashicorp/vault:1.20.0
+    ports:
+      - "8200:8200"
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=root
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+    command: "server -dev"
+    networks:
+      - ai-assistant-network
+  api-gateway:
+    build:
+      context: ./api_gateway
+      dockerfile: ../Dockerfile.api_gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - VAULT_URL=http://vault:8200
+      - VAULT_TOKEN=root
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - ADMIN_PANEL_URL=http://admin-panel:8001
+      - SOURCE_MANAGEMENT_URL=http://source-management:8002
+      - CONVERSATION_URL=http://conversation:8003
+    depends_on:
+      - vault
+      - admin-panel
+      - source-management
+      - conversation
+    networks:
+      - ai-assistant-network
+
+  admin-panel:
+    build:
+      context: ./admin_panel
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=${ADMIN_PANEL_DATABASE_URL}
+    networks:
+      - ai-assistant-network
+
+  source-management:
+    build:
+      context: ./source_management
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"
+    environment:
+      - DATABASE_URL=${SOURCE_MANAGEMENT_DATABASE_URL}
+      - OPENSEARCH_HOST=${OPENSEARCH_HOST}
+      - OPENSEARCH_USERNAME=${OPENSEARCH_USERNAME}
+      - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD}
+    networks:
+      - ai-assistant-network
+
+  conversation:
+    build:
+      context: ./conversation
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
+    environment:
+      - DATABASE_URL=${CONVERSATION_DATABASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    networks:
+      - ai-assistant-network
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    networks:
+      - ai-assistant-network
+
+networks:
+  ai-assistant-network:
+    driver: bridge
