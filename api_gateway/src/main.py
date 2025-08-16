@@ -1,28 +1,40 @@
-
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
+import os
+import json
+import uvicorn
+import logging
+from contextlib import asynccontextmanager
+from typing import List, Optional, Dict, Any
+from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import httpx
 import firebase_admin
 from firebase_admin import credentials, auth
-import httpx
-import os
-from typing import Dict, Any, Optional
-import logging
 from dotenv import load_dotenv
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
 
-# Try to get secrets from Vault, fallback to environment variables
 try:
     from vault_client import get_vault_secrets
-    vault_secrets = get_vault_secrets()
-    os.environ.update({k: v for k, v in vault_secrets.items() if v})
-    logger.info("Using secrets from Vault")
+    vault_available = True
 except ImportError:
     logger.info("Vault client not available, using environment variables")
-except Exception as e:
-    logger.warning(f"Failed to get secrets from Vault: {e}, using environment variables")
+    vault_available = False
+
+# Try to get secrets from Vault, fallback to environment variables
+if vault_available:
+    try:
+        vault_secrets = get_vault_secrets()
+        os.environ.update({k: v for k, v in vault_secrets.items() if v})
+        logger.info("Using secrets from Vault")
+    except Exception as e:
+        logger.warning(f"Failed to get secrets from Vault: {e}, using environment variables")
 
 # Initialize Firebase Admin SDK
 if not firebase_admin._apps:
@@ -52,7 +64,6 @@ app.add_middleware(
 )
 
 security = HTTPBearer()
-logger = logging.getLogger(__name__)
 
 # Service URLs
 ADMIN_PANEL_URL = os.getenv("ADMIN_PANEL_URL", "http://admin-panel:8000")
@@ -81,7 +92,7 @@ async def register_user(user_data: dict):
             password=user_data["password"],
             display_name=user_data.get("display_name", "")
         )
-        
+
         # Create user in our services
         user_payload = {
             "user_id": user.uid,
@@ -89,13 +100,13 @@ async def register_user(user_data: dict):
             "display_name": user.display_name or "",
             "created_at": user.user_metadata.creation_timestamp
         }
-        
+
         # Create user in admin panel
         async with httpx.AsyncClient() as client:
             await client.post(f"{ADMIN_PANEL_URL}/api/v1/users", json=user_payload)
             await client.post(f"{SOURCE_MANAGEMENT_URL}/api/v1/users", json=user_payload)
             await client.post(f"{CONVERSATION_URL}/api/v1/users", json=user_payload)
-        
+
         return {"message": "User registered successfully", "user_id": user.uid}
     except Exception as e:
         logger.error(f"Registration failed: {e}")
@@ -267,5 +278,4 @@ async def health_check():
     return {"status": "healthy", "timestamp": "2024-01-01T00:00:00Z"}
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

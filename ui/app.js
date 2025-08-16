@@ -1,18 +1,42 @@
 // Firebase configuration - Replace with your actual config
 const firebaseConfig = {
-    apiKey: "your-api-key-here",
-    authDomain: "your-project.firebaseapp.com",
-    projectId: "your-project-id",
-    storageBucket: "your-project.appspot.com",
+    apiKey: "demo-api-key",
+    authDomain: "demo-project.firebaseapp.com",
+    projectId: "demo-project-id",
+    storageBucket: "demo-project.appspot.com",
     messagingSenderId: "123456789",
-    appId: "your-app-id-here"
+    appId: "demo-app-id"
 };
 
 // Initialize Firebase only if not already initialized
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
+let auth;
+try {
+    if (typeof firebase !== 'undefined') {
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        auth = firebase.auth();
+    } else {
+        console.warn('Firebase SDK not loaded. Authentication features will be disabled.');
+        // Mock auth object for development
+        auth = {
+            onAuthStateChanged: (callback) => {
+                // Simulate a logged in user for development
+                setTimeout(() => {
+                    callback({
+                        email: 'demo@example.com',
+                        getIdToken: () => Promise.resolve('demo-token')
+                    });
+                }, 1000);
+            },
+            createUserWithEmailAndPassword: () => Promise.reject(new Error('Firebase not available')),
+            signInWithEmailAndPassword: () => Promise.reject(new Error('Firebase not available')),
+            signOut: () => Promise.resolve()
+        };
+    }
+} catch (error) {
+    console.error('Error initializing Firebase:', error);
 }
-const auth = firebase.auth();
 
 // API Gateway URL
 const API_BASE_URL = window.location.hostname === 'localhost' ?

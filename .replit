@@ -17,7 +17,7 @@ mode = "parallel"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd api_gateway && python src/main.py"
+args = "cd api_gateway && python -m uvicorn src.main:app --host 0.0.0.0 --port 8000"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
@@ -34,6 +34,44 @@ args = "cd conversation && python -m uvicorn src.entrypoints.api.fastapi_main:ap
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd ui && python -m http.server 3000"
+
+[[workflows.workflow]]
+name = "Install Dependencies"
+author = 46410154
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd api_gateway && pip install -r requirements.txt"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd admin_panel && pip install -r requirements.txt"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd source_management && pip install -r requirements.txt"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd conversation && pip install -r requirements.txt"
+
+[[workflows.workflow]]
+name = "Setup Database"
+author = 46410154
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd admin_panel && python -c \"from src.adapters.database.models import Base; from sqlalchemy import create_engine; engine = create_engine('sqlite:///./admin_panel.db'); Base.metadata.create_all(engine)\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd source_management && python -c \"from src.adapters.database.models import Base; from sqlalchemy import create_engine; engine = create_engine('sqlite:///./source_management.db'); Base.metadata.create_all(engine)\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd conversation && python -c \"from src.adapters.database.sql_db import Base; from sqlalchemy import create_engine; engine = create_engine('sqlite:///./conversation.db'); Base.metadata.create_all(engine)\""
 
 [[ports]]
 localPort = 3000
