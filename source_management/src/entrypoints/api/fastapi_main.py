@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.entrypoints.api import fastapi_handlers
 from src.entrypoints.api.ioc import FastapiContainer
 
-"asd".upper()
+
 class ServiceBootStrap:
     """
     Bootstrap class for initializing and configuring the FastAPI service.

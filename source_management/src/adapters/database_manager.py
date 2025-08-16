@@ -64,10 +64,10 @@ class DatabaseManagerImpl(DatabaseManager):
         try:
             client = await self.create_client(connection_params)
             await client.connect()
-            logger.info("Successfully connected to PostgreSQL database")
+            logger.info("Successfully connected to database")
             await client.close()
         except Exception as e:
-            logger.error(f"Failed to connect to PostgreSQL database: {str(e)}")
+            logger.error(f"Failed to connect to database: {str(e)}")
             raise CustomValueError(
                 error_status=ErrorStatus.BAD_REQUEST,
                 message="Connection to database resource failed",

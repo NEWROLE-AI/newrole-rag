@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from src.application.models.resource import Resource
+from src.application.models.vectorized_resource import Resource
 
 
 @dataclass

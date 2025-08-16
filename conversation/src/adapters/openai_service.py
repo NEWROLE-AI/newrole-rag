@@ -250,3 +250,177 @@ class OpenAIService(AIService):
             except Exception as e:
                 logger.error(f"Unexpected error: {str(e)}")
                 raise
+
+    async def generate_api_response(
+        self,
+        messages: list[Message],
+        knowledge_base_id: str,
+        resource_info: dict
+    ) -> dict:
+        """
+        Generates a JSON dict for a universal API request based on user input and resource info.
+
+        Returns:
+            dict: Final JSON dict (request body) containing realtime_resources and vectorization_resources.
+        """
+        prompt = """
+            You are an assistant who, based on a user query and a list of resources, generates a JSON payload for a universal data retrieval API.
+            
+            There are two types of resources:
+            - realtime_resources — real-time resources (databases and REST APIs).
+            - vectorization_resources — resources for text vectorization.
+            
+            Each item in realtime_resources should contain only the field additional_properties, which:
+            - For a database (DATABASE) contains the field "query" with an SQL query.
+            - For a REST API (REST_API) contains the fields:
+            - "method" — HTTP method ("GET" or "POST").
+            - Optionally, "header", "payload", "query_params", "placeholders" — if applicable.
+            
+            Each item in vectorization_resources contains the field:
+            - "input_data" — text input for vectorization.
+            
+            Input data:
+            
+            User query:
+            {user_message}
+            
+            Resource information (list of objects specifying resource types):
+            {resource_info}
+            
+            knowledge_base_id: {knowledge_base_id}
+            
+            Your task is to return a JSON object with two keys: "realtime_resources" and "vectorization_resources".
+            - The realtime_resources should be an array with only additional_properties (exclude resource_id, resource_type, and knowledge_base_id).
+            - The vectorization_resources should be an array with input_data (if none, return an empty array).
+            
+            Respond strictly with valid JSON only, no explanations or extra text.
+            
+            ---
+            
+            Example of a valid response:
+            
+            {{
+            "realtime_resources": [
+            {{
+            "additional_properties": {{
+            "method": "GET",
+            "query_params": {{"status": "active"}}
+            }}
+            }},
+            {{
+            "additional_properties": {{
+            "query": "SELECT * FROM orders WHERE status = 'active';"
+            }}
+            }}
+            ],
+            "vectorization_resources": [
+            {{
+            "input_data": "Show active customer orders"
+            }}
+            ]
+            }}
+        """
+
+        system_prompt = (
+            f"{prompt.strip()}\n\n"
+            f"Resource information:\n"
+            f"{json.dumps(resource_info, indent=2)}\n\n"
+            f"knowledge_base_id: {knowledge_base_id}\n\n"
+            f"Respond strictly with JSON containing keys realtime_resources and vectorization_resources, "
+            f"if applicable. For realtime_resources include only additional_properties. "
+            f"resource_id, resource_type, and knowledge_base_id will be added later."
+        )
+
+        formatted_messages = self._prepare_messages_with_token_limit(
+            system_prompt, [], messages
+        )
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": json.dumps(messages)}
+        ]
+
+
+
+        for attempt in range(1, self._max_retries + 1):
+            try:
+                response = await self._client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=messages,
+                    temperature=self._temperature,
+                    max_tokens=self._max_tokens,
+                    response_format={"type": "json_object"}
+                )
+
+                content = response.choices[0].message.content
+                parsed = json.loads(content)
+
+                # parsed should be the final dict with realtime_resources / vectorization_resources
+                return parsed
+
+            except (json.JSONDecodeError, KeyError) as e:
+                if attempt == self._max_retries:
+                    raise RuntimeError(f"Failed to parse JSON from LLM: {e}")
+                wait_time = await self._exponential_backoff(attempt)
+                await asyncio.sleep(wait_time)
+                return {}
+
+            except RateLimitError as e:
+                if attempt == self._max_retries:
+                    raise RuntimeError("Rate limit exceeded for LLM requests.")
+                wait_time = await self._exponential_backoff(attempt)
+                await asyncio.sleep(wait_time)
+                return {}
+
+            except Exception as e:
+                raise RuntimeError(f"Unexpected error during LLM response generation: {e}")
+        return {}
+
+    async def generate_response_with_resources(
+        self,
+        prompt: Prompt,
+        resource_data: dict,
+        messages: list[Message]
+    ) -> str:
+        formatted_messages = self._prepare_messages_with_token_limit(
+            prompt, [resource_data], messages
+        )
+        logger.info(formatted_messages)
+
+        for attempt in range(1, self._max_retries + 1):
+            try:
+                logger.info(datetime.now(timezone.utc))
+                response = await self._client.chat.completions.create(
+                    model="gpt-4o",  # Using the latest GPT-4 Turbo model
+                    messages=formatted_messages,
+                    temperature=self._temperature,
+                    max_tokens=self._max_tokens,
+                    response_format={"type": "json_object"}
+                )
+                logger.info(datetime.now(timezone.utc))
+                logger.info("API Response:", extra={"response": response})
+
+                try:
+                    response_content: str = response.choices[0].message.content
+
+                    return response_content
+                except json.JSONDecodeError:
+                    logger.error(f"Failed to parse JSON response: {response}")
+                    return ""
+
+            except RateLimitError as e:
+                logger.warning(f"Rate limit encountered (attempt {attempt}): {str(e)}")
+
+                if attempt == self._max_retries:
+                    logger.error("Max retries reached. Raising exception.")
+                    raise
+
+                wait_time = await self._exponential_backoff(attempt)
+                logger.info(f"Waiting {wait_time:.2f} seconds before retry")
+                await asyncio.sleep(wait_time)
+                return ""
+
+            except Exception as e:
+                logger.error(f"Unexpected error: {str(e)}")
+                raise
+        return ""

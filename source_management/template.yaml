@@ -40,7 +40,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "CreateResource-${Environment}"
-      Handler: src.entrypoints.api.handlers.create_resource
+      Handler: src.entrypoints.api.aws_handlers.create_resource
       Runtime: python3.12
       CodeUri: .
       Timeout: 30
@@ -84,7 +84,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "GetResourceIdsByKnowledgeBaseId-${Environment}"
-      Handler: src.entrypoints.api.handlers.get_resource_ids_by_knowledge_base_id
+      Handler: src.entrypoints.api.aws_handlers.get_resource_ids_by_knowledge_base_id
       Runtime: python3.12
       CodeUri: .
       Timeout: 30
@@ -131,7 +131,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "GetAllResources-${Environment}"
-      Handler: src.entrypoints.api.handlers.get_all_resources
+      Handler: src.entrypoints.api.aws_handlers.get_all_resources
       Runtime: python3.12
       CodeUri: .
       Timeout: 30
@@ -175,7 +175,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "CreateKnowledgeBase-${Environment}"
-      Handler: src.entrypoints.api.handlers.create_knowledge_base
+      Handler: src.entrypoints.api.aws_handlers.create_knowledge_base
       Runtime: python3.12
       CodeUri: .
       Timeout: 30
@@ -203,6 +203,92 @@ Resources:
             RestApiId: !Ref ApiGateway
             Path: /api/v1/knowledge_bases
             Method: POST
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-LambdaSGId"
+        SubnetIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetC"
+
+  RetrieveDataFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "RetrieveDataFunction-${Environment}"
+      Handler: src.entrypoints.api.aws_handlers.retrieve_data
+      Runtime: python3.12
+      CodeUri: .
+      Timeout: 30
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+        - AWSXrayWriteOnlyAccess
+        - AmazonS3FullAccess
+        - AmazonOpenSearchServiceFullAccess
+        - SecretsManagerReadWrite
+        - AmazonDynamoDBFullAccess
+      Layers:
+        - !Ref MSSQLLayer
+      Environment:
+        Variables:
+          AWS_XRAY_CONTEXT_MISSING: LOG_ERROR
+          LOG_LEVEL: INFO
+          ENVIRONMENT: !Sub "${Environment}"
+          REGION: !Sub "${AWS::Region}"
+      Tracing: Active
+      Events:
+        CreateKnowledgeBaseApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /api/v1/data/retrieve
+            Method: POST
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-LambdaSGId"
+        SubnetIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetC"
+
+  GetResourcesByKnowledgeBaseIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GetAllResources-${Environment}"
+      Handler: src.entrypoints.api.aws_handlers.get_resources_by_knowledge_base_id
+      Runtime: python3.12
+      CodeUri: .
+      Timeout: 30
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+        - AWSXrayWriteOnlyAccess
+        - AmazonS3FullAccess
+        - AmazonOpenSearchServiceFullAccess
+        - SecretsManagerReadWrite
+        - AmazonDynamoDBFullAccess
+      Environment:
+        Variables:
+          AWS_XRAY_CONTEXT_MISSING: LOG_ERROR
+          LOG_LEVEL: INFO
+          ENVIRONMENT: !Sub "${Environment}"
+          REGION: !Sub "${AWS::Region}"
+      Tracing: Active
+      Events:
+        GetAllResourcesApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /api/v1/{knowledge_base_id}/resources/
+            Method: GET
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue:

@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 
 from src.application.commands.base import BaseCommand
-from src.application.models.resource import ResourceType
+from src.application.models.vectorized_resource import VectorizedResourceType
 
 
 @dataclass
-class CreateResourceCommand(BaseCommand):
+class CreateVectorizedResourceCommand(BaseCommand):
     """
     Command for creating a resource (e.g., static file).
 
@@ -13,14 +13,14 @@ class CreateResourceCommand(BaseCommand):
     the associated knowledge base, and the file type.
 
     Attributes:
-        resource_type (ResourceType): The type of the resource (e.g., STATIC_FILE).
+        vectorized_resource_type (VectorizedResourceType): The type of the resource (e.g., STATIC_FILE).
         knowledge_base_id (str): The ID of the knowledge base associated with the resource.
         file_type (str | None): The type of file for the resource (optional).
         channel_id (str | None): The channel id for the resource (optional).
         messages (list[dict] | None): The messages for the resource (optional).
     """
 
-    resource_type: ResourceType
+    vectorized_resource_type: VectorizedResourceType
     knowledge_base_id: str
     channel_id: str | None = None
     file_type: str | None = None

@@ -1,3 +1,5 @@
+import json
+
 import aiohttp
 from aiohttp import ClientError
 from aiohttp.web_exceptions import HTTPError
@@ -32,7 +34,7 @@ class HttpSourceManagementApiClient(SourceManagementApiClient):
         self._session = session
         self._base_url = source_management_url
 
-    async def get_resource_ids_by_knowledge_base_id(
+    async def get_resource_info_by_knowledge_base_id(
         self, knowledge_base_id: str
     ) -> list[str]:
         """
@@ -44,27 +46,53 @@ class HttpSourceManagementApiClient(SourceManagementApiClient):
         Returns:
             list[str]: A list of resource IDs associated with the knowledge base.
         """
-        url = f"{self._base_url}/api/v1/resources"
+        url = f"{self._base_url}/api/v1/{knowledge_base_id}/resources"
         logger.info(
             f"HttpSourceManagementApiClient: Fetching resources ids with ID={knowledge_base_id}"
         )
         try:
             async with self._session.get(
-                url, params={"knowledge_base_id": knowledge_base_id}
+                url
             ) as response:
                 if response.status != 200:
                     logger.error(
                         f"Error fetching resources ids by knowledge_base_id data for ID={knowledge_base_id}: HTTP {response.status}"
                     )
                     raise HTTPError()
-                resource_ids_data = await response.json()
+                response_dict = await response.json()
             logger.info(
                 f"HttpSourceManagementApiClient: Successfully fetched resource ids data for ID={knowledge_base_id}"
             )
-            return resource_ids_data.get("resource_ids", [])
+            return response_dict.get("resource_info")
         except ClientError as e:
             logger.error(
                 f"HTTP ClientError while fetching resource ids with ID={knowledge_base_id}: {str(e)}"
+            )
+            raise
+
+
+    async def get_data(self, request_body: dict) -> dict:
+        url = f"{self._base_url}/api/v1/data/retrieve"
+        logger.info(
+            f"HttpSourceManagementApiClient: Get resource data"
+        )
+        try:
+            async with self._session.post(
+                    url, json=request_body
+            ) as response:
+                if response.status != 200:
+                    logger.error(
+                        f"Error fetching resources data: HTTP {response.status}"
+                    )
+                    raise HTTPError()
+                resource_data = await response.json()
+            logger.info(
+                f"HttpSourceManagementApiClient: Successfully fetched resource data"
+            )
+            return resource_data
+        except ClientError as e:
+            logger.error(
+                f"HTTP ClientError while fetching resource data: {str(e)}"
             )
             raise
 

@@ -4,14 +4,14 @@ from datetime import datetime
 from aws_lambda_powertools import Logger
 
 from src.application.command_handlers.base import BaseCommandHandler
-from src.application.commands.create_resource import CreateResourceCommand
+from src.application.commands.create_vectorized_resource import CreateVectorizedResourceCommand
 from src.application.exceptions.domain_exception import DomainException
 from src.application.exceptions.value_error_exception import (
     CustomValueError,
     ErrorStatus,
 )
-from src.application.models.resource import (
-    ResourceType,
+from src.application.models.vectorized_resource import (
+    VectorizedResourceType,
     Resource,
     SlackChannel,
     SlackMessage,
@@ -27,10 +27,10 @@ from src.application.ports.storage_manager import StorageManager
 from src.application.ports.unit_of_work import UnitOfWork
 
 
-logger = Logger(service="create_resource_handler")
+logger = Logger(service="create_vectorized_resource_handler")
 
 
-class CreateResourceCommandHandler(BaseCommandHandler):
+class CreateVectorizedResourceCommandHandler(BaseCommandHandler):
     """
     Command handler for creating resources.
 
@@ -47,10 +47,10 @@ class CreateResourceCommandHandler(BaseCommandHandler):
     def __init__(
         self,
         unit_of_work: UnitOfWork,
-        storage_manager: StorageManager,
         google_drive_api_client: GoogleDriveClient,
-        data_base_manager: DatabaseManager,
-        dynamodb_client: DynamodbClient,
+        storage_manager: StorageManager = None,
+        dynamodb_client: DynamodbClient = None,
+        data_base_manager: DatabaseManager = None,
     ):
         """
         Initializes the resource creation handler with dependencies.
@@ -63,23 +63,23 @@ class CreateResourceCommandHandler(BaseCommandHandler):
         self._storage_manager = storage_manager
         self._google_drive_api_client = google_drive_api_client
         self._handlers = {
-            ResourceType.STATIC_FILE: self._static_file_handler,
-            ResourceType.SLACK_CHANNEL: self._slack_channel_handler,
-            ResourceType.DATABASE: self._database_handler,
-            ResourceType.GOOGLE_DRIVE: self._google_drive_handler,
-            ResourceType.DYNAMODB_TABLE: self._dynamodb_table_handler,
+            VectorizedResourceType.STATIC_FILE: self._static_file_handler,
+            VectorizedResourceType.SLACK_CHANNEL: self._slack_channel_handler,
+            VectorizedResourceType.DATABASE: self._database_handler,
+            VectorizedResourceType.GOOGLE_DRIVE: self._google_drive_handler,
+            VectorizedResourceType.DYNAMODB_TABLE: self._dynamodb_table_handler,
         }
         self._database_manager = data_base_manager
         self._dynamodb_client = dynamodb_client
 
-    async def __call__(self, command: CreateResourceCommand):
+    async def __call__(self, command: CreateVectorizedResourceCommand):
         """
         Processes a CreateResourceCommand.
 
         The method routes the command to the appropriate handler based on the resource type.
 
         Args:
-            command(CreateResourceCommand): A CreateResourceCommand containing resource details.
+            command(CreateVectorizedResourceCommand): A CreateResourceCommand containing resource details.
 
         Returns:
             dict: A dictionary with the result of resource creation, including a presigned URL.
@@ -87,24 +87,24 @@ class CreateResourceCommandHandler(BaseCommandHandler):
         Raises:
             DomainException: If the resource type is not supported or the resource cannot be created.
         """
-        handler = self._handlers.get(command.resource_type)
+        handler = self._handlers.get(command.vectorized_resource_type)
         if not handler:
             logger.info(
                 "There is no resource handler of this type",
-                extra={"type": command.resource_type},
+                extra={"type": command.vectorized_resource_type},
             )
             raise DomainException("It is not possible to process this type of resource")
         result = await handler(command)
         return result
 
-    async def _slack_channel_handler(self, command: CreateResourceCommand):
+    async def _slack_channel_handler(self, command: CreateVectorizedResourceCommand):
         """
         Handles the creation of a slack_channel resource.
 
         This method retrieves the associated knowledge base and stores the resource in the repository.
 
         Args:
-            command(CreateResourceCommand): A CreateResourceCommand containing details of the slack channel.
+            command(CreateVectorizedResourceCommand): A CreateResourceCommand containing details of the slack channel.
 
         Returns:
             dict: A dictionary with the `resource_id` for the resource.
@@ -128,7 +128,7 @@ class CreateResourceCommandHandler(BaseCommandHandler):
             extra = SlackChannel(channel_id=command.channel_id, messages=messages)
             resource = Resource(
                 resource_id=str(uuid.uuid4()),
-                type=command.resource_type,
+                type=command.vectorized_resource_type,
                 knowledge_base_id=knowledge_base.knowledge_base_id,
                 extra=extra,
             )
@@ -138,7 +138,7 @@ class CreateResourceCommandHandler(BaseCommandHandler):
             logger.info("Resource created")
             return {"resource_id": resource.resource_id}
 
-    async def _static_file_handler(self, command: CreateResourceCommand):
+    async def _static_file_handler(self, command: CreateVectorizedResourceCommand):
         """
         Handles the creation of a static file resource.
 
@@ -146,7 +146,7 @@ class CreateResourceCommandHandler(BaseCommandHandler):
         and stores the resource in the repository.
 
         Args:
-            command(CreateResourceCommand): A CreateResourceCommand containing details of the static file.
+            command(CreateVectorizedResourceCommand): A CreateResourceCommand containing details of the static file.
 
         Returns:
             dict: A dictionary with the `presigned_url` for the static file resource.
@@ -160,7 +160,7 @@ class CreateResourceCommandHandler(BaseCommandHandler):
 
             resource = Resource(
                 resource_id=str(uuid.uuid4()),
-                type=command.resource_type,
+                type=command.vectorized_resource_type,
                 knowledge_base_id=knowledge_base.knowledge_base_id,
                 extra=File(extension=command.file_type),
             )
@@ -177,14 +177,14 @@ class CreateResourceCommandHandler(BaseCommandHandler):
             logger.info("Resource created")
             return {"presigned_url": presigned_url, "resource_id": resource.resource_id}
 
-    async def _database_handler(self, command: CreateResourceCommand):
+    async def _database_handler(self, command: CreateVectorizedResourceCommand):
         """
         Handles the creation of a database resource.
 
         This method retrieves the associated knowledge base and stores the resource in the repository.
 
         Args:
-            command(CreateResourceCommand): A CreateResourceCommand containing details of the database.
+            command(CreateVectorizedResourceCommand): A CreateResourceCommand containing details of the database.
 
         Returns:
             dict: A dictionary with the `resource_id` for the resource.
@@ -203,7 +203,7 @@ class CreateResourceCommandHandler(BaseCommandHandler):
 
             resource = Resource(
                 resource_id=str(uuid.uuid4()),
-                type=command.resource_type,
+                type=command.vectorized_resource_type,
                 knowledge_base_id=knowledge_base.knowledge_base_id,
                 extra=Database(
                     connection_params=command.connection_params, query=command.query
@@ -215,14 +215,14 @@ class CreateResourceCommandHandler(BaseCommandHandler):
             logger.info("Resource created")
             return {"resource_id": resource.resource_id}
 
-    async def _google_drive_handler(self, command: CreateResourceCommand):
+    async def _google_drive_handler(self, command: CreateVectorizedResourceCommand):
         """
         Handles the creation of a Google Drive resource.
 
         This method retrieves the associated knowledge base and stores the resource in the repository.
 
         Args:
-            command(CreateResourceCommand): A CreateResourceCommand containing details of the Google Drive.
+            command(CreateVectorizedResourceCommand): A CreateResourceCommand containing details of the Google Drive.
 
         Returns:
             dict: A dictionary with the `resource_id` for the resource.
@@ -242,7 +242,7 @@ class CreateResourceCommandHandler(BaseCommandHandler):
 
             resource = Resource(
                 resource_id=str(uuid.uuid4()),
-                type=command.resource_type,
+                type=command.vectorized_resource_type,
                 knowledge_base_id=knowledge_base.knowledge_base_id,
                 extra=GoogleDrive(google_drive_url=command.google_drive_url),
             )
@@ -251,7 +251,7 @@ class CreateResourceCommandHandler(BaseCommandHandler):
             logger.info("Resource created")
             return {"resource_id": resource.resource_id}
 
-    async def _dynamodb_table_handler(self, command: CreateResourceCommand):
+    async def _dynamodb_table_handler(self, command: CreateVectorizedResourceCommand):
         """
         Handles the creation of a DynamoDB table resource.
         """
@@ -262,7 +262,7 @@ class CreateResourceCommandHandler(BaseCommandHandler):
 
             resource = Resource(
                 resource_id=str(uuid.uuid4()),
-                type=command.resource_type,
+                type=command.vectorized_resource_type,
                 knowledge_base_id=knowledge_base.knowledge_base_id,
                 extra=DynamodbTable(table_name=command.dynamodb_table_name),
             )
