@@ -1,0 +1,41 @@
+
+# Google Cloud Run configuration
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ai-assistant-api-gateway
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "10"
+    spec:
+      containerConcurrency: 80
+      containers:
+      - image: gcr.io/YOUR_PROJECT_ID/ai-assistant-api-gateway
+        ports:
+        - containerPort: 8000
+        env:
+        - name: FIREBASE_PROJECT_ID
+          valueFrom:
+            secretKeyRef:
+              name: firebase-config
+              key: project-id
+        - name: FIREBASE_PRIVATE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: firebase-config
+              key: private-key
+        - name: FIREBASE_CLIENT_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: firebase-config
+              key: client-email
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi

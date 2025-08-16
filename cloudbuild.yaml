@@ -1,0 +1,43 @@
+
+steps:
+  # Build API Gateway
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/api-gateway', './api_gateway']
+    id: 'build-api-gateway'
+  
+  # Build Admin Panel
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/admin-panel', './admin_panel']
+    id: 'build-admin-panel'
+  
+  # Build Source Management
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/source-management', './source_management']
+    id: 'build-source-management'
+  
+  # Build Conversation
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/conversation', './conversation']
+    id: 'build-conversation'
+
+  # Deploy API Gateway
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'api-gateway'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/api-gateway'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+    id: 'deploy-api-gateway'
+    waitFor: ['build-api-gateway']
+
+images:
+  - 'gcr.io/$PROJECT_ID/api-gateway'
+  - 'gcr.io/$PROJECT_ID/admin-panel'
+  - 'gcr.io/$PROJECT_ID/source-management'
+  - 'gcr.io/$PROJECT_ID/conversation'

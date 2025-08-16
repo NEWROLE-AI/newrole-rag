@@ -8,6 +8,10 @@ import httpx
 import os
 from typing import Dict, Any, Optional
 import logging
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Initialize Firebase Admin SDK
 if not firebase_admin._apps:
