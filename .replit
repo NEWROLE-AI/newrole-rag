@@ -1,0 +1,8 @@
+modules = ["python-3.12", "c-clang14"]
+compile = "make"
+
+[nix]
+channel = "stable-25_05"
+
+[deployment]
+build = ["sh", "-c", "make"]
