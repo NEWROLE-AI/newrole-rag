@@ -34,3 +34,7 @@ args = "cd conversation && python -m uvicorn src.entrypoints.api.fastapi_main:ap
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd ui && python -m http.server 3000"
+
+[[ports]]
+localPort = 3000
+externalPort = 80
