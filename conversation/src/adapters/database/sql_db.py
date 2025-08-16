@@ -1,8 +1,14 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+import uuid
+from datetime import datetime
 
+from sqlalchemy import Column, String, DateTime, ForeignKey
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.orm import relationship, declarative_base
 
+
+Base = declarative_base()
 
 def get_session_maker(database_url: str) -> async_sessionmaker[AsyncSession]:
     """
@@ -51,3 +57,24 @@ async def get_custom_session(
     """
     async with session_maker() as session:
         yield session
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    username = Column(String, unique=True, nullable=False)
+    email = Column(String, unique=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    conversations = relationship("Conversation", back_populates="user")
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    title = Column(String)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="conversations")

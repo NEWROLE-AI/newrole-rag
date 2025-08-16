@@ -1,0 +1,44 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: source-management
+  namespace: ai-assistant
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: source-management
+  template:
+    metadata:
+      labels:
+        app: source-management
+    spec:
+      containers:
+      - name: source-management
+        image: ai-assistant/source-management:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: database-config
+              key: source-management-url
+        - name: OPENSEARCH_HOST
+          valueFrom:
+            secretKeyRef:
+              name: opensearch-config
+              key: host
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: source-management-service
+  namespace: ai-assistant
+spec:
+  selector:
+    app: source-management
+  ports:
+  - port: 8000
+    targetPort: 8000

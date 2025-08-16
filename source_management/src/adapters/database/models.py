@@ -1,9 +1,13 @@
 from sqlalchemy import Table, Column, Integer, String, ForeignKey, TIMESTAMP
-from sqlalchemy.orm import registry
+from sqlalchemy.orm import registry, relationship
+from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
+import uuid
 
 # SQLAlchemy registry for metadata mapping
 mapper_registry = registry()
 
+Base = declarative_base()
 
 resources = Table(
     "resources",
@@ -23,10 +27,26 @@ resources = Table(
 )
 
 
-knowledge_bases = Table(
-    "knowledge_bases",
-    mapper_registry.metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("knowledge_base_id", String, nullable=False),
-    Column("name", String, nullable=False),
-)
+class User(Base):
+    __tablename__ = "users"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    username = Column(String, nullable=False, unique=True)
+    email = Column(String, nullable=False, unique=True)
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+
+    # Relationships
+    knowledge_bases = relationship("KnowledgeBase", back_populates="user")
+
+
+class KnowledgeBase(Base):
+    __tablename__ = "knowledge_bases"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, nullable=False)
+    description = Column(String)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="knowledge_bases")

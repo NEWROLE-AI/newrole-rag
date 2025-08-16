@@ -1,0 +1,147 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant Platform</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .hidden { display: none; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .tab-button.active { background-color: #3B82F6; color: white; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Firebase Config -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "your-api-key",
+            authDomain: "your-project.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "your-app-id"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+
+    <!-- Navigation -->
+    <nav class="bg-blue-600 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">AI Assistant Platform</h1>
+            <div id="user-info" class="hidden">
+                <span id="user-email" class="mr-4"></span>
+                <button id="logout-btn" class="bg-red-500 px-4 py-2 rounded">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Auth Section -->
+    <div id="auth-section" class="container mx-auto mt-8 max-w-md">
+        <div class="bg-white p-8 rounded-lg shadow">
+            <h2 class="text-2xl mb-6 text-center">Sign In / Sign Up</h2>
+            
+            <div class="mb-4">
+                <input type="email" id="email" placeholder="Email" class="w-full p-3 border rounded">
+            </div>
+            <div class="mb-4">
+                <input type="password" id="password" placeholder="Password" class="w-full p-3 border rounded">
+            </div>
+            <div class="mb-4">
+                <input type="text" id="displayName" placeholder="Display Name (for signup)" class="w-full p-3 border rounded">
+            </div>
+            
+            <div class="flex gap-4">
+                <button id="signin-btn" class="flex-1 bg-blue-500 text-white p-3 rounded">Sign In</button>
+                <button id="signup-btn" class="flex-1 bg-green-500 text-white p-3 rounded">Sign Up</button>
+            </div>
+            
+            <div id="auth-error" class="mt-4 text-red-500 hidden"></div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-app" class="hidden container mx-auto mt-8">
+        <!-- Tabs -->
+        <div class="bg-white rounded-lg shadow mb-6">
+            <div class="flex border-b">
+                <button class="tab-button px-6 py-3 border-r active" data-tab="dashboard">Dashboard</button>
+                <button class="tab-button px-6 py-3 border-r" data-tab="knowledge-bases">Knowledge Bases</button>
+                <button class="tab-button px-6 py-3 border-r" data-tab="chatbots">Chatbots</button>
+                <button class="tab-button px-6 py-3 border-r" data-tab="conversations">Conversations</button>
+                <button class="tab-button px-6 py-3" data-tab="prompts">Prompts</button>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active p-6">
+                <h2 class="text-2xl mb-4">Dashboard</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-blue-100 p-6 rounded-lg">
+                        <h3 class="text-xl font-bold">Knowledge Bases</h3>
+                        <p id="kb-count" class="text-3xl text-blue-600">0</p>
+                    </div>
+                    <div class="bg-green-100 p-6 rounded-lg">
+                        <h3 class="text-xl font-bold">Chatbots</h3>
+                        <p id="chatbot-count" class="text-3xl text-green-600">0</p>
+                    </div>
+                    <div class="bg-purple-100 p-6 rounded-lg">
+                        <h3 class="text-xl font-bold">Conversations</h3>
+                        <p id="conversation-count" class="text-3xl text-purple-600">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Knowledge Bases Tab -->
+            <div id="knowledge-bases" class="tab-content p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl">Knowledge Bases</h2>
+                    <button id="create-kb-btn" class="bg-blue-500 text-white px-4 py-2 rounded">Create Knowledge Base</button>
+                </div>
+                <div id="kb-list" class="space-y-4"></div>
+            </div>
+
+            <!-- Chatbots Tab -->
+            <div id="chatbots" class="tab-content p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl">Chatbots</h2>
+                    <button id="create-chatbot-btn" class="bg-green-500 text-white px-4 py-2 rounded">Create Chatbot</button>
+                </div>
+                <div id="chatbot-list" class="space-y-4"></div>
+            </div>
+
+            <!-- Conversations Tab -->
+            <div id="conversations" class="tab-content p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl">Conversations</h2>
+                    <button id="new-conversation-btn" class="bg-purple-500 text-white px-4 py-2 rounded">New Conversation</button>
+                </div>
+                <div id="conversation-list" class="space-y-4"></div>
+            </div>
+
+            <!-- Prompts Tab -->
+            <div id="prompts" class="tab-content p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl">Prompts</h2>
+                    <button id="create-prompt-btn" class="bg-yellow-500 text-white px-4 py-2 rounded">Create Prompt</button>
+                </div>
+                <div id="prompt-list" class="space-y-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden">
+        <div class="flex items-center justify-center min-h-screen">
+            <div class="bg-white p-6 rounded-lg w-96">
+                <div id="modal-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

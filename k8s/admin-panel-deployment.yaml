@@ -1,0 +1,39 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-panel
+  namespace: ai-assistant
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: admin-panel
+  template:
+    metadata:
+      labels:
+        app: admin-panel
+    spec:
+      containers:
+      - name: admin-panel
+        image: ai-assistant/admin-panel:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: database-config
+              key: admin-panel-url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-panel-service
+  namespace: ai-assistant
+spec:
+  selector:
+    app: admin-panel
+  ports:
+  - port: 8000
+    targetPort: 8000

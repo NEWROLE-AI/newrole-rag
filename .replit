@@ -6,3 +6,19 @@ channel = "stable-25_05"
 
 [deployment]
 build = ["sh", "-c", "make"]
+
+[workflows]
+runButton = "Start All Services"
+
+[[workflows.workflow]]
+name = "Start All Services"
+author = 46410154
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd api_gateway && python src/main.py"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd ui && python -m http.server 3000"

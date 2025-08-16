@@ -1,3 +1,51 @@
+
+from fastapi import APIRouter, Depends, HTTPException, Header
+from typing import Optional
+from dependency_injector.wiring import inject, Provide
+
+router = APIRouter()
+
+@router.post("/v1/users")
+@inject
+async def create_user(
+    user_data: dict,
+    unit_of_work = Depends(Provide["unit_of_work"])
+):
+    async with unit_of_work as uow:
+        existing_user = await uow.users.get_by_id(user_data["user_id"])
+        if existing_user:
+            return {"message": "User already exists"}
+        
+        user = User(
+            id=user_data["user_id"],
+            email=user_data["email"],
+            display_name=user_data.get("display_name", "")
+        )
+        await uow.users.create(user)
+        await uow.commit()
+        return {"message": "User created successfully"}
+
+@router.get("/v1/prompts")
+@inject
+async def get_user_prompts(
+    x_user_id: str = Header(..., alias="X-User-ID"),
+    unit_of_work = Depends(Provide["unit_of_work"])
+):
+    async with unit_of_work as uow:
+        prompts = await uow.prompts.get_by_user_id(x_user_id)
+        return {"prompts": prompts}
+
+@router.get("/v1/chatbots")
+@inject
+async def get_user_chatbots(
+    x_user_id: str = Header(..., alias="X-User-ID"),
+    unit_of_work = Depends(Provide["unit_of_work"])
+):
+    async with unit_of_work as uow:
+        chatbots = await uow.chatbots.get_by_user_id(x_user_id)
+        return {"chatbots": chatbots}
+
+
 import fastapi
 from fastapi import Depends
 from fastapi.logger import logger

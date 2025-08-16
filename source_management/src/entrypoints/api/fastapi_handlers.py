@@ -1,3 +1,35 @@
+
+@router.post("/v1/users")
+@inject
+async def create_user(
+    user_data: dict,
+    unit_of_work = Depends(Provide["unit_of_work"])
+):
+    async with unit_of_work as uow:
+        existing_user = await uow.users.get_by_id(user_data["user_id"])
+        if existing_user:
+            return {"message": "User already exists"}
+        
+        user = User(
+            id=user_data["user_id"],
+            email=user_data["email"],
+            display_name=user_data.get("display_name", "")
+        )
+        await uow.users.create(user)
+        await uow.commit()
+        return {"message": "User created successfully"}
+
+@router.get("/v1/knowledge-bases")
+@inject
+async def get_user_knowledge_bases(
+    x_user_id: str = Header(..., alias="X-User-ID"),
+    unit_of_work = Depends(Provide["unit_of_work"])
+):
+    async with unit_of_work as uow:
+        knowledge_bases = await uow.knowledge_bases.get_by_user_id(x_user_id)
+        return {"knowledge_bases": knowledge_bases}
+
+
 import fastapi
 from dependency_injector.wiring import Closing, Provide, inject
 
