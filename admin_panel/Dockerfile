@@ -1,23 +1,30 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
-WORKDIR /app
-
-# Install system dependencies
+# Установка системных зависимостей
 RUN apt-get update && apt-get install -y \
     gcc \
+    unixodbc-dev \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Рабочая директория
+WORKDIR /app
 
-# Copy application code
-COPY . .
+# Копируем зависимости
+COPY pyproject.toml poetry.lock* /app/
 
-# Create non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
+# Устанавливаем Poetry
+RUN pip install --no-cache-dir poetry
 
+# Устанавливаем зависимости без venv
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-interaction --no-ansi --no-root
+
+# Копируем оставшийся код
+COPY . /app
+
+# Открываем порт
 EXPOSE 8000
 
-CMD ["python", "-m", "uvicorn", "src.entrypoints.api.fastapi_main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Команда запуска по умолчанию (если не переопределена)
+CMD ["uvicorn", "src.entrypoints.api.fastapi_main:app", "--host", "0.0.0.0", "--port", "8000"]
