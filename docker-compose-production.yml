@@ -17,7 +17,7 @@ services:
   api-gateway:
     build:
       context: ./api_gateway
-      dockerfile: ../Dockerfile.api_gateway
+      dockerfile: ./Dockerfile
     ports:
       - "8000:8000"
     environment:
@@ -29,6 +29,8 @@ services:
       - ADMIN_PANEL_URL=http://admin-panel:8001
       - SOURCE_MANAGEMENT_URL=http://source-management:8002
       - CONVERSATION_URL=http://conversation:8003
+      - CONTAINER_TYPE=fastapi
+      - ENVIRONMENT=dev
     depends_on:
       - vault
       - admin-panel
@@ -45,6 +47,8 @@ services:
       - "8001:8000"
     environment:
       - DATABASE_URL=${ADMIN_PANEL_DATABASE_URL}
+      - CONTAINER_TYPE=fastapi
+      - ENVIRONMENT=dev
     networks:
       - ai-assistant-network
 
@@ -59,6 +63,8 @@ services:
       - OPENSEARCH_HOST=${OPENSEARCH_HOST}
       - OPENSEARCH_USERNAME=${OPENSEARCH_USERNAME}
       - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD}
+      - CONTAINER_TYPE=fastapi
+      - ENVIRONMENT=dev
     networks:
       - ai-assistant-network
 
@@ -71,6 +77,8 @@ services:
     environment:
       - DATABASE_URL=${CONVERSATION_DATABASE_URL}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CONTAINER_TYPE=fastapi
+      - ENVIRONMENT=dev
     networks:
       - ai-assistant-network
 
