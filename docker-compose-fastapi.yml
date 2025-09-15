@@ -13,7 +13,6 @@ services:
       - IPC_LOCK
     command: "server -dev"
 
-
   source-management-mongo-db:
     image: mongo:6
     container_name: source-management-mongo-db
@@ -125,6 +124,39 @@ services:
       bash -c "alembic upgrade head"
     restart: "no"
 
+  api-gateway:
+    build:
+      context: ./api_gateway
+      dockerfile: ./Dockerfile
+    ports:
+      - "8003:8000"
+    environment:
+      VAULT_URL: http://vault:8200
+      VAULT_TOKEN: root
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL}
+      ADMIN_PANEL_URL: http://admin-panel:8000
+      SOURCE_MANAGEMENT_URL: http://source-management:8000
+      CONVERSATION_URL: http://conversation:8000
+      CONTAINER_TYPE: fastapi
+      ENVIRONMENT: dev
+    depends_on:
+      - vault
+      - admin-panel
+      - source-management
+      - conversation
+    restart: unless-stopped
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
 
 volumes:
   source_management_postgres_data:

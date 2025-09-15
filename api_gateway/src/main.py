@@ -4,7 +4,7 @@ import uvicorn
 import logging
 from contextlib import asynccontextmanager
 from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -23,6 +23,7 @@ load_dotenv()
 
 try:
     from vault_client import get_vault_secrets
+
     vault_available = True
 except ImportError:
     logger.info("Vault client not available, using environment variables")
@@ -37,46 +38,46 @@ if vault_available:
     except Exception as e:
         logger.warning(f"Failed to get secrets from Vault: {e}, using environment variables")
 
+# Environment check
+ENVIRONMENT = os.getenv("ENVIRONMENT", "dev")
+DEV_MODE = ENVIRONMENT == "dev"
+
 # Firebase configuration
-try:
-    firebase_project_id = os.getenv("FIREBASE_PROJECT_ID")
-    firebase_private_key = os.getenv("FIREBASE_PRIVATE_KEY")
-    firebase_client_email = os.getenv("FIREBASE_CLIENT_EMAIL")
+FIREBASE_ENABLED = False
+if not DEV_MODE:  # Only enable Firebase in production
+    try:
+        firebase_project_id = os.getenv("FIREBASE_PROJECT_ID")
+        firebase_private_key = os.getenv("FIREBASE_PRIVATE_KEY")
+        firebase_client_email = os.getenv("FIREBASE_CLIENT_EMAIL")
 
-    if firebase_project_id and firebase_private_key and firebase_client_email:
-        # Clean private key format
-        private_key = firebase_private_key.replace('\\n', '\n')
-        if not private_key.startswith('-----BEGIN'):
-            # If it's base64 encoded, decode it
-            try:
-                private_key = base64.b64decode(firebase_private_key).decode('utf-8')
-            except Exception as e:
-                logger.warning(f"Failed to decode private key: {e}")
+        if firebase_project_id and firebase_private_key and firebase_client_email:
+            # Clean private key format
+            private_key = firebase_private_key.replace('\\n', '\n')
+            if not private_key.startswith('-----BEGIN'):
+                try:
+                    private_key = base64.b64decode(firebase_private_key).decode('utf-8')
+                except Exception as e:
+                    logger.warning(f"Failed to decode private key: {e}")
 
+            firebase_config = {
+                "type": "service_account",
+                "project_id": firebase_project_id,
+                "private_key": private_key,
+                "client_email": firebase_client_email,
+                "client_id": "",
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{firebase_client_email}"
+            }
 
-        firebase_config = {
-            "type": "service_account",
-            "project_id": firebase_project_id,
-            "private_key": private_key,
-            "client_email": firebase_client_email,
-            "client_id": "", # Client ID is not strictly required for service account authentication
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{firebase_client_email}"
-        }
-
-        cred = credentials.Certificate(firebase_config)
-        firebase_admin.initialize_app(cred)
-        logger.info("Firebase Admin SDK initialized successfully")
-        FIREBASE_ENABLED = True
-    else:
-        logger.warning("Firebase credentials not found, continuing without Firebase authentication")
-        FIREBASE_ENABLED = False
-except Exception as e:
-    logger.error(f"Failed to initialize Firebase: {e}")
-    logger.warning("Continuing without Firebase authentication")
-    FIREBASE_ENABLED = False
+            cred = credentials.Certificate(firebase_config)
+            firebase_admin.initialize_app(cred)
+            logger.info("Firebase Admin SDK initialized successfully")
+            FIREBASE_ENABLED = True
+    except Exception as e:
+        logger.error(f"Failed to initialize Firebase: {e}")
+        logger.warning("Continuing without Firebase authentication")
 
 app = FastAPI(title="AI Assistant API Gateway", version="1.0.0")
 
@@ -89,20 +90,49 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 # Service URLs
 ADMIN_PANEL_URL = os.getenv("ADMIN_PANEL_URL", "http://admin-panel:8000")
 SOURCE_MANAGEMENT_URL = os.getenv("SOURCE_MANAGEMENT_URL", "http://source-management:8000")
 CONVERSATION_URL = os.getenv("CONVERSATION_URL", "http://conversation:8000")
 
-async def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
-    """Verify Firebase ID token and return user info"""
+
+async def get_current_user(
+        request: Request,
+        credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+) -> Dict[str, Any]:
+    """Get current user - dev mode or Firebase"""
+
+    # Dev mode - простая аутентификация
+    if DEV_MODE:
+        # Проверяем заголовок X-User-ID от nginx
+        user_id = request.headers.get("X-User-ID")
+        if user_id:
+            return {"uid": user_id, "email": "demo@example.com"}
+
+        # Проверяем Bearer токен
+        if credentials:
+            token = credentials.credentials
+            if token in ["admin-token", "demo-token", "dev-dummy-token"]:
+                return {"uid": "demo-user", "email": "demo@example.com"}
+
+        # В dev режиме разрешаем доступ без аутентификации
+        return {"uid": "anonymous", "email": "anonymous@example.com"}
+
+    # Production mode - Firebase аутентификация
     if not FIREBASE_ENABLED:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Firebase is not enabled or initialized"
         )
+
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication credentials required"
+        )
+
     try:
         decoded_token = auth.verify_id_token(credentials.credentials)
         return decoded_token
@@ -113,14 +143,19 @@ async def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depe
             detail="Invalid authentication token"
         )
 
+
 @app.post("/api/v1/auth/register")
 async def register_user(user_data: dict):
     """Register a new user"""
+    if DEV_MODE:
+        return {"message": "Registration simulated in dev mode", "user_id": "demo-user"}
+
     if not FIREBASE_ENABLED:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Firebase is not enabled or initialized"
         )
+
     try:
         # Create user in Firebase
         user = auth.create_user(
@@ -148,122 +183,295 @@ async def register_user(user_data: dict):
         logger.error(f"Registration failed: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
+
 # Admin Panel endpoints
 @app.get("/api/v1/prompts")
-async def get_prompts(user: dict = Depends(verify_firebase_token)):
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{ADMIN_PANEL_URL}/api/v1/prompts",
-            headers={"X-User-ID": user["uid"]}
-        )
-        response.raise_for_status()
-        return response.json()
+async def get_prompts(user: dict = Depends(get_current_user)):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{ADMIN_PANEL_URL}/api/v1/prompts",
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error getting prompts: {e}")
+        # В dev режиме возвращаем пустой ответ вместо ошибки
+        if DEV_MODE:
+            return {"prompts": []}
+        raise HTTPException(status_code=503, detail="Admin panel service unavailable")
+
 
 @app.post("/api/v1/prompts")
-async def create_prompt(prompt_data: dict, user: dict = Depends(verify_firebase_token)):
+async def create_prompt(prompt_data: dict, user: dict = Depends(get_current_user)):
     prompt_data["user_id"] = user["uid"]
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{ADMIN_PANEL_URL}/api/v1/prompts",
-            json=prompt_data,
-            headers={"X-User-ID": user["uid"]}
-        )
-        response.raise_for_status()
-        return response.json()
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{ADMIN_PANEL_URL}/api/v1/prompts",
+                json=prompt_data,
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error creating prompt: {e}")
+        if DEV_MODE:
+            return {"id": "demo-id", "message": "Prompt created (dev mode)", **prompt_data}
+        raise HTTPException(status_code=503, detail="Admin panel service unavailable")
+
+
+@app.delete("/api/v1/prompts/{prompt_id}")
+async def delete_prompt(prompt_id: str, user: dict = Depends(get_current_user)):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.delete(
+                f"{ADMIN_PANEL_URL}/api/v1/prompts/{prompt_id}",
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error deleting prompt: {e}")
+        if DEV_MODE:
+            return {"message": "Prompt deleted (dev mode)"}
+        raise HTTPException(status_code=503, detail="Admin panel service unavailable")
+
 
 @app.get("/api/v1/chatbots")
-async def get_chatbots(user: dict = Depends(verify_firebase_token)):
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{ADMIN_PANEL_URL}/api/v1/chatbots",
-            headers={"X-User-ID": user["uid"]}
-        )
-        response.raise_for_status()
-        return response.json()
+async def get_chatbots(user: dict = Depends(get_current_user)):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{ADMIN_PANEL_URL}/api/v1/chatbots",
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error getting chatbots: {e}")
+        if DEV_MODE:
+            return {"chatbots": []}
+        raise HTTPException(status_code=503, detail="Admin panel service unavailable")
+
 
 @app.post("/api/v1/chatbots")
-async def create_chatbot(chatbot_data: dict, user: dict = Depends(verify_firebase_token)):
+async def create_chatbot(chatbot_data: dict, user: dict = Depends(get_current_user)):
     chatbot_data["user_id"] = user["uid"]
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{ADMIN_PANEL_URL}/api/v1/chatbots",
-            json=chatbot_data,
-            headers={"X-User-ID": user["uid"]}
-        )
-        response.raise_for_status()
-        return response.json()
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{ADMIN_PANEL_URL}/api/v1/chatbots",
+                json=chatbot_data,
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error creating chatbot: {e}")
+        if DEV_MODE:
+            return {"id": "demo-chatbot-id", "message": "Chatbot created (dev mode)", **chatbot_data}
+        raise HTTPException(status_code=503, detail="Admin panel service unavailable")
+
+
+@app.delete("/api/v1/chatbots/{chatbot_id}")
+async def delete_chatbot(chatbot_id: str, user: dict = Depends(get_current_user)):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.delete(
+                f"{ADMIN_PANEL_URL}/api/v1/chatbots/{chatbot_id}",
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error deleting chatbot: {e}")
+        if DEV_MODE:
+            return {"message": "Chatbot deleted (dev mode)"}
+        raise HTTPException(status_code=503, detail="Admin panel service unavailable")
+
 
 # Source Management endpoints
 @app.get("/api/v1/knowledge-bases")
-async def get_knowledge_bases(user: dict = Depends(verify_firebase_token)):
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{SOURCE_MANAGEMENT_URL}/api/v1/knowledge-bases",
-            headers={"X-User-ID": user["uid"]}
-        )
-        response.raise_for_status()
-        return response.json()
+async def get_knowledge_bases(user: dict = Depends(get_current_user)):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{SOURCE_MANAGEMENT_URL}/api/v1/knowledge-bases",
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error getting knowledge bases: {e}")
+        if DEV_MODE:
+            return {"knowledge_bases": []}
+        raise HTTPException(status_code=503, detail="Source management service unavailable")
+
 
 @app.post("/api/v1/knowledge-bases")
-async def create_knowledge_base(kb_data: dict, user: dict = Depends(verify_firebase_token)):
+async def create_knowledge_base(kb_data: dict, user: dict = Depends(get_current_user)):
     kb_data["user_id"] = user["uid"]
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{SOURCE_MANAGEMENT_URL}/api/v1/knowledge-bases",
-            json=kb_data,
-            headers={"X-User-ID": user["uid"]}
-        )
-        response.raise_for_status()
-        return response.json()
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{SOURCE_MANAGEMENT_URL}/api/v1/knowledge-bases",
+                json=kb_data,
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error creating knowledge base: {e}")
+        if DEV_MODE:
+            return {"id": "demo-kb-id", "message": "Knowledge base created (dev mode)", **kb_data}
+        raise HTTPException(status_code=503, detail="Source management service unavailable")
+
+
+@app.delete("/api/v1/knowledge-bases/{kb_id}")
+async def delete_knowledge_base(kb_id: str, user: dict = Depends(get_current_user)):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.delete(
+                f"{SOURCE_MANAGEMENT_URL}/api/v1/knowledge-bases/{kb_id}",
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error deleting knowledge base: {e}")
+        if DEV_MODE:
+            return {"message": "Knowledge base deleted (dev mode)"}
+        raise HTTPException(status_code=503, detail="Source management service unavailable")
+
+
+@app.get("/api/v1/resources")
+async def get_resources(user: dict = Depends(get_current_user)):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{SOURCE_MANAGEMENT_URL}/api/v1/resources",
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error getting resources: {e}")
+        if DEV_MODE:
+            return {"resources": []}
+        raise HTTPException(status_code=503, detail="Source management service unavailable")
+
 
 @app.post("/api/v1/resources")
-async def create_resource(resource_data: dict, user: dict = Depends(verify_firebase_token)):
+async def create_resource(resource_data: dict, user: dict = Depends(get_current_user)):
     resource_data["user_id"] = user["uid"]
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{SOURCE_MANAGEMENT_URL}/api/v1/resources",
-            json=resource_data,
-            headers={"X-User-ID": user["uid"]}
-        )
-        response.raise_for_status()
-        return response.json()
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{SOURCE_MANAGEMENT_URL}/api/v1/resources",
+                json=resource_data,
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error creating resource: {e}")
+        if DEV_MODE:
+            return {"id": "demo-resource-id", "message": "Resource created (dev mode)", **resource_data}
+        raise HTTPException(status_code=503, detail="Source management service unavailable")
 
-@app.post("/api/v1/data/retrieve")
-async def retrieve_data(data_request: dict, user: dict = Depends(verify_firebase_token)):
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{SOURCE_MANAGEMENT_URL}/api/v1/data/retrieve",
-            json=data_request,
-            headers={"X-User-ID": user["uid"]}
-        )
-        response.raise_for_status()
-        return response.json()
+
+@app.delete("/api/v1/resources/{resource_id}")
+async def delete_resource(resource_id: str, user: dict = Depends(get_current_user)):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.delete(
+                f"{SOURCE_MANAGEMENT_URL}/api/v1/resources/{resource_id}",
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error deleting resource: {e}")
+        if DEV_MODE:
+            return {"message": "Resource deleted (dev mode)"}
+        raise HTTPException(status_code=503, detail="Source management service unavailable")
+
 
 # Conversation endpoints
 @app.get("/api/v1/conversations")
-async def get_conversations(user: dict = Depends(verify_firebase_token)):
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{CONVERSATION_URL}/api/v1/conversations",
-            headers={"X-User-ID": user["uid"]}
-        )
-        response.raise_for_status()
-        return response.json()
+async def get_conversations(user: dict = Depends(get_current_user)):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{CONVERSATION_URL}/api/v1/conversations",
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error getting conversations: {e}")
+        if DEV_MODE:
+            return {"conversations": []}
+        raise HTTPException(status_code=503, detail="Conversation service unavailable")
+
 
 @app.post("/api/v1/conversations")
-async def create_conversation(conv_data: dict, user: dict = Depends(verify_firebase_token)):
+async def create_conversation(conv_data: dict, user: dict = Depends(get_current_user)):
     conv_data["user_id"] = user["uid"]
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{CONVERSATION_URL}/api/v1/conversations",
-            json=conv_data,
-            headers={"X-User-ID": user["uid"]}
-        )
-        response.raise_for_status()
-        return response.json()
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{CONVERSATION_URL}/api/v1/conversations",
+                json=conv_data,
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error creating conversation: {e}")
+        if DEV_MODE:
+            return {"id": "demo-conv-id", "message": "Conversation created (dev mode)", **conv_data}
+        raise HTTPException(status_code=503, detail="Conversation service unavailable")
+
+
+@app.delete("/api/v1/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: str, user: dict = Depends(get_current_user)):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.delete(
+                f"{CONVERSATION_URL}/api/v1/conversations/{conversation_id}",
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error deleting conversation: {e}")
+        if DEV_MODE:
+            return {"message": "Conversation deleted (dev mode)"}
+        raise HTTPException(status_code=503, detail="Conversation service unavailable")
+
+
+@app.get("/api/v1/conversations/{conversation_id}/messages")
+async def get_messages(conversation_id: str, user: dict = Depends(get_current_user)):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{CONVERSATION_URL}/api/v1/conversations/{conversation_id}/messages",
+                headers={"X-User-ID": user["uid"]}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error getting messages: {e}")
+        if DEV_MODE:
+            return {"messages": []}
+        raise HTTPException(status_code=503, detail="Conversation service unavailable")
+
 
 @app.post("/api/v1/conversations/{conversation_id}/messages")
-async def send_message(conversation_id: str, message_data: dict, user: dict = Depends(verify_firebase_token)):
+async def send_message(conversation_id: str, message_data: dict, user: dict = Depends(get_current_user)):
     message_data["user_id"] = user["uid"]
     try:
         async with httpx.AsyncClient() as client:
@@ -274,15 +482,15 @@ async def send_message(conversation_id: str, message_data: dict, user: dict = De
             )
             response.raise_for_status()
             return response.json()
-    except httpx.RequestError as e:
-        logger.error(f"Request to conversation service failed: {e}")
+    except Exception as e:
+        logger.error(f"Error sending message: {e}")
+        if DEV_MODE:
+            return {"id": "demo-msg-id", "message": "Message sent (dev mode)", **message_data}
         raise HTTPException(status_code=503, detail="Conversation service unavailable")
-    except httpx.HTTPStatusError as e:
-        logger.error(f"Conversation service returned error: {e}")
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+
 
 @app.get("/api/v1/users/profile")
-async def get_user_profile(user: dict = Depends(verify_firebase_token)):
+async def get_user_profile(user: dict = Depends(get_current_user)):
     """Get current user profile"""
     return {
         "user_id": user["uid"],
@@ -291,43 +499,12 @@ async def get_user_profile(user: dict = Depends(verify_firebase_token)):
         "email_verified": user.get("email_verified", False)
     }
 
-@app.put("/api/v1/prompts/{prompt_id}")
-async def update_prompt(prompt_id: str, prompt_data: dict, user: dict = Depends(verify_firebase_token)):
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.put(
-                f"{ADMIN_PANEL_URL}/api/v1/prompts",
-                json={"prompt_id": prompt_id, **prompt_data},
-                headers={"X-User-ID": user["uid"]}
-            )
-            response.raise_for_status()
-            return response.json()
-    except httpx.RequestError:
-        raise HTTPException(status_code=503, detail="Admin panel service unavailable")
-    except httpx.HTTPStatusError as e:
-        logger.error(f"Admin panel service returned error: {e}")
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-
-@app.get("/api/v1/resources/{knowledge_base_id}")
-async def get_resources_by_kb(knowledge_base_id: str, user: dict = Depends(verify_firebase_token)):
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{SOURCE_MANAGEMENT_URL}/api/v1/resources/{knowledge_base_id}",
-                headers={"X-User-ID": user["uid"]}
-            )
-            response.raise_for_status()
-            return response.json()
-    except httpx.RequestError:
-        raise HTTPException(status_code=503, detail="Source management service unavailable")
-    except httpx.HTTPStatusError as e:
-        logger.error(f"Source management service returned error: {e}")
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
 
 @app.get("/api/v1/health")
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": "2024-01-01T00:00:00Z"}
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

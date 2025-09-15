@@ -1,418 +1,755 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Assistant Dashboard</title>
+    <title>AI Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
         }
 
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #64748b;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --bg-main: #fafbfc;
+            --bg-card: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --border-hover: #cbd5e1;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --radius-lg: 16px;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        .hidden {
+            display: none !important;
         }
 
-        .header {
+        .app-container {
+            min-height: 100vh;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #eee;
-            flex-wrap: wrap;
-            gap: 15px;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .main-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+            width: 100%;
+            max-width: 1200px;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 24px 32px;
+            text-align: center;
         }
 
         .header h1 {
-            color: #333;
-            margin: 0;
-            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
         }
 
-        .auth-section {
-            margin-bottom: 20px;
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        /* Content */
+        .content {
+            padding: 32px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        /* Auth Section */
+        #auth-section {
+            text-align: center;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .auth-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 32px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+        }
+
+        .auth-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .auth-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
         }
 
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 16px;
+            text-align: left;
         }
 
-        label {
+        .form-label {
             display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #333;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: var(--text-primary);
         }
 
-        input, textarea, select {
+        .form-input {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
             font-size: 14px;
-            transition: border-color 0.3s, box-shadow 0.3s;
+            transition: all 0.2s ease;
+            background: var(--bg-card);
+            font-family: 'Inter', sans-serif;
         }
 
-        input:focus, textarea:focus, select:focus {
+        .form-input:focus {
             outline: none;
-            border-color: #007bff;
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgb(37 99 235 / 0.1);
         }
 
-        input:invalid, textarea:invalid {
-            border-color: #dc3545;
-        }
-
-        button {
-            background: linear-gradient(135deg, #007bff, #0056b3);
-            color: white;
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
             padding: 12px 24px;
             border: none;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 500;
             cursor: pointer;
-            margin-right: 10px;
-            margin-bottom: 10px;
-            font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: all 0.2s ease;
+            text-decoration: none;
             min-width: 120px;
+            font-family: 'Inter', sans-serif;
         }
 
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        .btn-primary {
+            background: var(--primary);
+            color: white;
         }
 
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
         }
 
-        .section {
-            margin-bottom: 40px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
         }
 
-        .section h2 {
-            color: #333;
-            border-bottom: 3px solid #007bff;
-            padding-bottom: 10px;
-            margin-top: 0;
+        .btn-secondary:hover {
+            background: #f8fafc;
+            border-color: var(--border-hover);
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 12px;
+            min-width: auto;
+        }
+
+        /* User Info */
+        #user-info {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 16px 24px;
+            border-radius: var(--radius);
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-details h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .user-email {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+        }
+
+        /* Section Cards */
+        .section-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .section-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--border-hover);
+        }
+
+        .section-header {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--border);
+            background: #fafbfc;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
 
-        .chat-container {
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            height: 400px;
+        .section-title i {
+            width: 20px;
+            color: var(--primary);
+        }
+
+        .section-body {
+            padding: 24px;
+        }
+
+        /* Form Controls */
+        .controls-grid {
+            display: grid;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .controls-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .controls-multi {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+        }
+
+        /* List Items */
+        .list-container {
+            max-height: 300px;
             overflow-y: auto;
-            padding: 15px;
-            margin-bottom: 15px;
-            background-color: white;
-            scroll-behavior: smooth;
-        }
-
-        .message {
-            margin-bottom: 15px;
-            padding: 12px;
-            border-radius: 8px;
-            max-width: 80%;
-            word-wrap: break-word;
-        }
-
-        .user-message {
-            background: linear-gradient(135deg, #007bff, #0056b3);
-            color: white;
-            margin-left: auto;
-            text-align: right;
-        }
-
-        .ai-message {
-            background-color: #e9ecef;
-            color: #333;
         }
 
         .list-item {
-            background-color: white;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 6px;
-            border-left: 4px solid #007bff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            transition: all 0.2s ease;
         }
 
         .list-item:hover {
-            transform: translateX(5px);
+            background: #f1f5f9;
+            border-color: var(--border-hover);
         }
 
-        .list-item h4 {
-            margin: 0 0 10px 0;
-            color: #333;
+        .list-content {
+            flex: 1;
         }
 
-        .list-item p {
-            margin: 5px 0;
-            color: #666;
-            font-size: 14px;
+        .list-title {
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
         }
 
-        .hidden { 
-            display: none !important; 
+        .list-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
         }
 
-        .user-info {
-            background: linear-gradient(135deg, #28a745, #20c997);
-            color: white;
-            padding: 10px 15px;
-            border-radius: 20px;
+        .list-actions {
             display: flex;
+            gap: 8px;
+        }
+
+        /* Chat Area */
+        .chat-container {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .chat-messages {
+            height: 300px;
+            overflow-y: auto;
+            padding: 16px;
+            background: #fafbfc;
+        }
+
+        .chat-input-area {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+            background: white;
+        }
+
+        .chat-input-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            resize: vertical;
+            min-height: 44px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 32px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            padding: 16px 20px;
+            border-radius: var(--radius);
+            color: white;
+            font-weight: 500;
+            box-shadow: var(--shadow-lg);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            max-width: 400px;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            background: var(--success);
+        }
+
+        .toast.error {
+            background: var(--error);
+        }
+
+        /* Status Indicator */
+        .status-indicator {
+            display: inline-flex;
             align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
         }
 
-        .success-message {
-            background-color: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            border-left: 4px solid #28a745;
+        .status-online {
+            background: #dcfce7;
+            color: #166534;
         }
 
-        .error-message {
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            border-left: 4px solid #dc3545;
-        }
-
-        .loading {
-            opacity: 0.6;
-            pointer-events: none;
-        }
-
-        /* Responsive design */
+        /* Responsive */
         @media (max-width: 768px) {
-            .container {
-                padding: 15px;
-                margin: 10px;
+            .app-container {
+                padding: 12px;
             }
 
-            .header {
+            .content {
+                padding: 20px;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .controls-row {
+                grid-template-columns: 1fr;
+            }
+
+            .chat-input-row {
                 flex-direction: column;
-                text-align: center;
+                gap: 8px;
             }
 
-            .section {
-                padding: 15px;
-            }
-
-            .user-info {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            button {
+            .btn {
                 width: 100%;
-                margin-right: 0;
             }
 
-            .message {
-                max-width: 95%;
+            .list-item {
+                flex-direction: column;
+                gap: 12px;
+                align-items: stretch;
             }
-        }
 
-        /* Accessibility improvements */
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
+            .list-actions {
+                justify-content: flex-end;
             }
         }
 
-        /* Focus indicators for keyboard navigation */
-        button:focus-visible,
-        input:focus-visible,
-        textarea:focus-visible,
-        select:focus-visible {
-            outline: 2px solid #007bff;
-            outline-offset: 2px;
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🤖 AI Assistant Dashboard</h1>
-            <div id="user-info" class="user-info hidden">
-                <span id="user-email"></span>
-                <button onclick="logout()" type="button">Logout</button>
-            </div>
-        </div>
-
-        <!-- Auth Section -->
-        <div id="auth-section" class="auth-section">
-            <h2>🔐 Login / Register</h2>
-            <div id="auth-message"></div>
-            <form onsubmit="return false;">
-                <div class="form-group">
-                    <label for="auth-email">Email:</label>
-                    <input type="email" id="auth-email" placeholder="Enter your email" required>
-                </div>
-                <div class="form-group">
-                    <label for="auth-password">Password:</label>
-                    <input type="password" id="auth-password" placeholder="Enter your password" required minlength="6">
-                </div>
-                <div class="form-group">
-                    <label for="display-name">Display Name (for registration):</label>
-                    <input type="text" id="display-name" placeholder="Your display name">
-                </div>
-                <button type="button" onclick="login()">Login</button>
-                <button type="button" onclick="register()">Register</button>
-            </form>
-        </div>
-
-        <!-- Main Dashboard -->
-        <div id="main-dashboard" class="hidden">
-            <!-- Prompts Section -->
-            <div class="section">
-                <h2>📝 Prompts Management</h2>
-                <div class="form-group">
-                    <label for="prompt-text">Prompt Text:</label>
-                    <textarea id="prompt-text" placeholder="Enter your prompt text" rows="4" required></textarea>
-                </div>
-                <button type="button" onclick="createPrompt()">Create Prompt</button>
-                <button type="button" onclick="loadPrompts()">Refresh Prompts</button>
-                <div id="prompts-list" role="region" aria-label="Prompts list"></div>
+    <div class="app-container">
+        <div class="main-card">
+            <div class="header">
+                <h1><i class="fas fa-brain"></i> AI Dashboard</h1>
+                <p>Управляйте вашими ИИ-проектами в одном месте</p>
             </div>
 
-            <!-- Knowledge Bases Section -->
-            <div class="section">
-                <h2>📚 Knowledge Bases</h2>
-                <div class="form-group">
-                    <label for="kb-name">Knowledge Base Name:</label>
-                    <input type="text" id="kb-name" placeholder="Enter knowledge base name" required>
-                </div>
-                <button type="button" onclick="createKnowledgeBase()">Create Knowledge Base</button>
-                <button type="button" onclick="loadKnowledgeBases()">Refresh Knowledge Bases</button>
-                <div id="kb-list" role="region" aria-label="Knowledge bases list"></div>
-            </div>
+            <div class="content">
+                <!-- Auth Section -->
+                <div id="auth-section">
+                    <div class="auth-card">
+                        <h2 class="auth-title">Добро пожаловать</h2>
+                        <p class="auth-subtitle">Войдите в систему для продолжения</p>
 
-            <!-- Resources Section -->
-            <div class="section">
-                <h2>📄 Resources Management</h2>
-                <div class="form-group">
-                    <label for="resource-kb-select">Knowledge Base:</label>
-                    <select id="resource-kb-select" required>
-                        <option value="">Select Knowledge Base</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="resource-type">Resource Type:</label>
-                    <select id="resource-type">
-                        <option value="VECTORIZED">Vectorized</option>
-                        <option value="REALTIME">Realtime</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="resource-file-type">File Type (optional):</label>
-                    <select id="resource-file-type">
-                        <option value="">Select file type</option>
-                        <option value="PDF">PDF</option>
-                        <option value="TXT">Text</option>
-                        <option value="DOCX">Word Document</option>
-                    </select>
-                </div>
-                <button type="button" onclick="createResource()">Create Resource</button>
-                <div id="resources-list" role="region" aria-label="Resources list"></div>
-            </div>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" id="email" class="form-input" value="admin" placeholder="Введите email">
+                        </div>
 
-            <!-- Chatbots Section -->
-            <div class="section">
-                <h2>🤖 Chatbots Management</h2>
-                <div class="form-group">
-                    <label for="chatbot-name">Chatbot Name:</label>
-                    <input type="text" id="chatbot-name" placeholder="Enter chatbot name" required>
-                </div>
-                <div class="form-group">
-                    <label for="chatbot-model">Model:</label>
-                    <select id="chatbot-model">
-                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                        <option value="gpt-4">GPT-4</option>
-                        <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="chatbot-temperature">Temperature:</label>
-                    <input type="number" id="chatbot-temperature" value="0.7" min="0" max="2" step="0.1" required>
-                </div>
-                <div class="form-group">
-                    <label for="chatbot-max-tokens">Max Tokens:</label>
-                    <input type="number" id="chatbot-max-tokens" value="1000" min="1" max="4000" required>
-                </div>
-                <div class="form-group">
-                    <label for="chatbot-system-prompt">System Prompt:</label>
-                    <textarea id="chatbot-system-prompt" placeholder="Enter system prompt" rows="3"></textarea>
-                </div>
-                <button type="button" onclick="createChatbot()">Create Chatbot</button>
-                <button type="button" onclick="loadChatbots()">Refresh Chatbots</button>
-                <div id="chatbots-list" role="region" aria-label="Chatbots list"></div>
-            </div>
+                        <div class="form-group">
+                            <label class="form-label">Пароль</label>
+                            <input type="password" id="password" class="form-input" value="admin" placeholder="Введите пароль">
+                        </div>
 
-            <!-- Chat Section -->
-            <div class="section">
-                <h2>💬 Chat</h2>
-                <div class="form-group">
-                    <label for="chatbot-select">Select Chatbot:</label>
-                    <select id="chatbot-select" required>
-                        <option value="">Select a chatbot</option>
-                    </select>
+                        <div style="display: flex; gap: 12px; margin-top: 24px;">
+                            <button class="btn btn-primary" onclick="loginWithEmail()">
+                                <i class="fas fa-sign-in-alt"></i> Войти
+                            </button>
+                            <button class="btn btn-secondary" onclick="registerWithEmail()">
+                                <i class="fas fa-user-plus"></i> Регистрация
+                            </button>
+                        </div>
+
+                        <div style="margin-top: 20px; padding: 12px; background: #f0f9ff; border-radius: 8px; color: #0369a1; font-size: 14px;">
+                            <i class="fas fa-info-circle"></i> Автоматический вход через 1 секунду...
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="conversation-select">Select Conversation:</label>
-                    <select id="conversation-select">
-                        <option value="">Create new conversation</option>
-                    </select>
+
+                <!-- User Info -->
+                <div id="user-info" class="hidden">
+                    <div class="user-details">
+                        <h3>Добро пожаловать!</h3>
+                        <div class="user-email">
+                            <i class="fas fa-envelope"></i> <span id="user-email">admin@admin.com</span>
+                            <span class="status-indicator status-online">
+                                <i class="fas fa-circle"></i> В сети
+                            </span>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Выход
+                    </button>
                 </div>
-                <div class="chat-container" id="chat-messages" role="log" aria-label="Chat messages"></div>
-                <div class="form-group">
-                    <label for="message-input">Message:</label>
-                    <input type="text" id="message-input" placeholder="Type your message..." onkeypress="handleMessageKeyPress(event)" required>
+
+                <!-- Main Dashboard -->
+                <div id="main-dashboard" class="hidden">
+                    <div class="dashboard-grid">
+                        <!-- Prompts Section -->
+                        <div class="section-card">
+                            <div class="section-header">
+                                <h3 class="section-title">
+                                    <i class="fas fa-magic"></i> Промпты
+                                </h3>
+                            </div>
+                            <div class="section-body">
+                                <div class="controls-grid">
+                                    <div class="form-group">
+                                        <textarea id="prompt-text" class="form-input" rows="3" placeholder="Введите текст промпта..."></textarea>
+                                    </div>
+                                    <div class="controls-row">
+                                        <div></div>
+                                        <div style="display: flex; gap: 8px;">
+                                            <button class="btn btn-primary btn-sm" onclick="createPrompt()">
+                                                <i class="fas fa-plus"></i> Создать
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" onclick="loadPrompts()">
+                                                <i class="fas fa-sync"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="list-container" id="prompts-list">
+                                    <div class="empty-state">
+                                        <i class="fas fa-magic"></i>
+                                        <p>Промпты не найдены</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Knowledge Bases Section -->
+                        <div class="section-card">
+                            <div class="section-header">
+                                <h3 class="section-title">
+                                    <i class="fas fa-database"></i> Базы знаний
+                                </h3>
+                            </div>
+                            <div class="section-body">
+                                <div class="controls-grid">
+                                    <div class="controls-row">
+                                        <input type="text" id="kb-name" class="form-input" placeholder="Название базы знаний">
+                                        <div style="display: flex; gap: 8px;">
+                                            <button class="btn btn-primary btn-sm" onclick="createKnowledgeBase()">
+                                                <i class="fas fa-plus"></i> Создать
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" onclick="loadKnowledgeBases()">
+                                                <i class="fas fa-sync"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="list-container" id="knowledge-bases-list">
+                                    <div class="empty-state">
+                                        <i class="fas fa-database"></i>
+                                        <p>Базы знаний не найдены</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Resources Section -->
+                        <div class="section-card">
+                            <div class="section-header">
+                                <h3 class="section-title">
+                                    <i class="fas fa-file-alt"></i> Ресурсы
+                                </h3>
+                            </div>
+                            <div class="section-body">
+                                <div class="controls-grid">
+                                    <div class="controls-multi">
+                                        <select id="resource-kb" class="form-input">
+                                            <option value="">Выберите базу знаний</option>
+                                        </select>
+                                        <select id="resource-type" class="form-input">
+                                            <option value="vectorized">Векторизованный</option>
+                                            <option value="realtime">Реальное время</option>
+                                        </select>
+                                        <select id="file-type" class="form-input">
+                                            <option value="">Тип файла</option>
+                                            <option value="pdf">PDF</option>
+                                            <option value="text">Текст</option>
+                                            <option value="docx">Word Document</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm" onclick="createResource()">
+                                        <i class="fas fa-plus"></i> Создать ресурс
+                                    </button>
+                                </div>
+                                <div class="list-container" id="resources-list">
+                                    <div class="empty-state">
+                                        <i class="fas fa-file-alt"></i>
+                                        <p>Ресурсы не найдены</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chatbots Section -->
+                        <div class="section-card">
+                            <div class="section-header">
+                                <h3 class="section-title">
+                                    <i class="fas fa-robot"></i> Чатботы
+                                </h3>
+                            </div>
+                            <div class="section-body">
+                                <div class="controls-grid">
+                                    <input type="text" id="chatbot-name" class="form-input" placeholder="Название чатбота">
+                                    <div class="controls-multi">
+                                        <select id="chatbot-model" class="form-input">
+                                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                            <option value="gpt-4">GPT-4</option>
+                                            <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                                        </select>
+                                        <input type="number" id="temperature" class="form-input" placeholder="Температура" min="0" max="2" step="0.1" value="0.7">
+                                        <input type="number" id="max-tokens" class="form-input" placeholder="Макс. токены" min="1" max="4000" value="1000">
+                                    </div>
+                                    <textarea id="system-prompt" class="form-input" rows="2" placeholder="Системный промпт..."></textarea>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="btn btn-primary btn-sm" onclick="createChatbot()">
+                                            <i class="fas fa-plus"></i> Создать чатбота
+                                        </button>
+                                        <button class="btn btn-secondary btn-sm" onclick="loadChatbots()">
+                                            <i class="fas fa-sync"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="list-container" id="chatbots-list">
+                                    <div class="empty-state">
+                                        <i class="fas fa-robot"></i>
+                                        <p>Чатботы не найдены</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chat Section -->
+                        <div class="section-card" style="grid-column: 1 / -1;">
+                            <div class="section-header">
+                                <h3 class="section-title">
+                                    <i class="fas fa-comments"></i> Чат
+                                </h3>
+                            </div>
+                            <div class="section-body">
+                                <div class="controls-grid">
+                                    <div class="controls-row">
+                                        <select id="chat-chatbot" class="form-input">
+                                            <option value="">Выберите чатбота</option>
+                                        </select>
+                                        <div style="display: flex; gap: 8px;">
+                                            <button class="btn btn-primary btn-sm" onclick="newConversation()">
+                                                <i class="fas fa-plus"></i> Новый диалог
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" onclick="loadConversations()">
+                                                <i class="fas fa-sync"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="list-container" id="conversations-list" style="margin-bottom: 20px;">
+                                    <div class="empty-state">
+                                        <i class="fas fa-comments"></i>
+                                        <p>Диалоги не найдены</p>
+                                    </div>
+                                </div>
+
+                                <div class="chat-container">
+                                    <div class="chat-messages" id="chat-messages">
+                                        <div class="empty-state">
+                                            <i class="fas fa-comment-dots"></i>
+                                            <p>Выберите диалог для начала общения</p>
+                                        </div>
+                                    </div>
+                                    <div class="chat-input-area">
+                                        <div class="chat-input-row">
+                                            <textarea id="chat-input" class="form-input chat-input" placeholder="Введите сообщение..." rows="2"></textarea>
+                                            <button class="btn btn-primary" onclick="sendMessage()">
+                                                <i class="fas fa-paper-plane"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <button type="button" onclick="sendMessage()">Send Message</button>
-                <button type="button" onclick="loadConversations()">Refresh Conversations</button>
             </div>
         </div>
     </div>
 
-    <!-- app.js -->
     <script src="app.js"></script>
 </body>
 </html>
