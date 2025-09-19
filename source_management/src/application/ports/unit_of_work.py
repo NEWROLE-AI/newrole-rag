@@ -14,6 +14,10 @@ class KnowledgeBaseRepository(ABC):
     async def get(self, knowledge_base_id: str) -> KnowledgeBase:
         raise NotImplementedError
 
+    @abstractmethod
+    async def get_list_by_id(self, user_id: str) -> list[KnowledgeBase]:
+        raise NotImplementedError
+
 
 class ResourceRepository(ABC):
     @abstractmethod

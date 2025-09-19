@@ -18,4 +18,5 @@ class KnowledgeBase:
 
     knowledge_base_id: str
     name: str
+    user_id: str
     resources: list[Resource] = field(default_factory=list)

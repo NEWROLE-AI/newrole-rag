@@ -29,4 +29,5 @@ knowledge_bases = Table(
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("knowledge_base_id", String, nullable=False),
     Column("name", String, nullable=False),
+    Column("user_id", String, nullable=False),
 )

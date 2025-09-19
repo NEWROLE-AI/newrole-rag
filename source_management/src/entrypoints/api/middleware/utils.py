@@ -53,12 +53,20 @@ def lambda_handler_decorator(
                     body_parameters = {}
                 query_parameters = event.get("queryStringParameters", {}) or {}
 
+                # Extract headers and get X-User-ID
+                headers = event.get("headers", {}) or {}
+                user_id = headers.get("x-user-id") or headers.get("X-User-ID") or headers.get("x_user_id")
+
                 # Combine all parameters
                 event_data = {
                     **path_parameters,
                     **body_parameters,
                     **query_parameters,
                 }
+
+                # Add user_id if available
+                if user_id:
+                    event_data["user_id"] = user_id
                 # Validate and process request
                 request = parse(model=model, event=event_data)
                 result = loop.run_until_complete(handler(request))

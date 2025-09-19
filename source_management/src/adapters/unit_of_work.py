@@ -121,6 +121,7 @@ class MongoRealtimeResourceRepository:
             "resource_id": resource.resource_id,
             "knowledge_base_id": resource.knowledge_base_id,
             "type": resource.type.value,
+            "user_id": resource.user_id,
         }
 
         if resource.type == RealtimeResourceType.REST_API:
@@ -153,6 +154,7 @@ class MongoRealtimeResourceRepository:
             resource_id=item["resource_id"],
             knowledge_base_id=item["knowledge_base_id"],
             type=RealtimeResourceType(item["type"]),
+            user_id=item["user_id"],
         )
 
         # Восстанавливаем extra по типу
@@ -310,8 +312,8 @@ class SqlKnowledgeBaseRepository(KnowledgeBaseRepository):
         logger.info(f"Adding knowledge base: {knowledge_base}")
         query = text(
             """
-                    INSERT INTO knowledge_bases (knowledge_base_id, name)
-                    VALUES (:knowledge_base_id, :name)
+                    INSERT INTO knowledge_bases (knowledge_base_id, name, user_id)
+                    VALUES (:knowledge_base_id, :name, :user_id)
                 """
         )
         await self._session.execute(
@@ -319,6 +321,7 @@ class SqlKnowledgeBaseRepository(KnowledgeBaseRepository):
             {
                 "knowledge_base_id": knowledge_base.knowledge_base_id,
                 "name": knowledge_base.name,
+                "user_id": knowledge_base.user_id,
             },
         )
 
@@ -338,7 +341,7 @@ class SqlKnowledgeBaseRepository(KnowledgeBaseRepository):
         logger.info(f"Fetching knowledge base with ID: {knowledge_base_id}")
         query = text(
             """
-                    SELECT knowledge_base_id, name
+                    SELECT knowledge_base_id, name, user_id
                     FROM knowledge_bases
                     WHERE knowledge_base_id = :knowledge_base_id
                 """
@@ -351,12 +354,46 @@ class SqlKnowledgeBaseRepository(KnowledgeBaseRepository):
             return KnowledgeBase(
                 knowledge_base_id=row.knowledge_base_id,
                 name=row.name,
+                user_id=row.user_id,
             )
         else:
             raise CustomValueError(
                 error_status=ErrorStatus.NOT_FOUND,
                 message=f"Knowledge base with ID {knowledge_base_id} not found",
             )
+
+    async def get_list_by_id(self, user_id: str) -> list[KnowledgeBase]:
+
+        logger.info(f"Fetching knowledge base with user ID: {user_id}")
+        query = text(
+            """
+                    SELECT knowledge_base_id, name, user_id
+                    FROM knowledge_bases
+                    WHERE user_id = :user_id
+                """
+        )
+        result = await self._session.execute(
+            query, {"user_id": user_id}
+        )
+        res = result.fetchall()
+        print(res)
+
+        if not res:
+            raise CustomValueError(
+                error_status=ErrorStatus.NOT_FOUND,
+                message=f"Knowledge base with user ID {user_id} not found",
+            )
+
+        knowledge_base_list = []
+        for row in res:
+            knowledge_base_list.append(KnowledgeBase(
+                knowledge_base_id=row.knowledge_base_id,
+                name=row.name,
+                user_id=row.user_id,
+            ))
+
+        return knowledge_base_list
+
 
 
 class DynamoSlackChannelRepository(SlackChannelRepository):
@@ -711,6 +748,7 @@ class DynamodbRealtimeResourceRepository(RealtimeResourceRepository):
                 'resource_id': resource.resource_id,
                 'knowledge_base_id': resource.knowledge_base_id,
                 'type': resource.type.value,
+                'user_id': resource.user_id,
             }
             if resource.type == RealtimeResourceType.REST_API:
                 item["url"] = resource.extra.url
@@ -740,6 +778,7 @@ class DynamodbRealtimeResourceRepository(RealtimeResourceRepository):
                 resource_id=item['resource_id'],
                 knowledge_base_id=item['knowledge_base_id'],
                 type=RealtimeResourceType(item['type']),
+                user_id=item.get('user_id'),
             )
 
             if 'url' in item:

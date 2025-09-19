@@ -55,7 +55,9 @@ class CreateKnowledgeBaseCommandHandler(BaseCommandHandler):
         )
         async with self._unit_of_work as uow:
             knowledge_base = KnowledgeBase(
-                knowledge_base_id=str(uuid.uuid4()), name=command.knowledge_base_name
+                knowledge_base_id=str(uuid.uuid4()),
+                name=command.knowledge_base_name,
+                user_id=command.user_id
             )
             logger.info(
                 "Create knowledge base",

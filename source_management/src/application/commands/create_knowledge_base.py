@@ -15,3 +15,4 @@ class CreateKnowledgeBaseCommand(BaseCommand):
     """
 
     knowledge_base_name: str
+    user_id: str

@@ -93,6 +93,22 @@ class GetAllResourcesResponse(BaseModel):
 
     knowledge_bases: list[dict]
 
+
+class GetKnowledgeBasesResponse(BaseModel):
+    """
+    Response model for retrieving all knowledge bases.
+
+    Attributes:
+        knowledge_bases (list[dict]): List of knowledge bases
+    """
+
+    class KnowledgeBase(BaseModel):
+        knowledge_base_id: str
+        name: str
+        user_id: str
+
+    knowledge_bases: list[KnowledgeBase]
+
 class DatabaseProperties(BaseModel):
     """
     Properties specific to a database resource.

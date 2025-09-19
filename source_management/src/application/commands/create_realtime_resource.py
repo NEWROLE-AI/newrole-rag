@@ -23,6 +23,7 @@ class CreateRealtimeResourceCommand(BaseCommand):
 
     realtime_resource_type: RealtimeResourceType
     knowledge_base_id: str
+    user_id: str
     url: str | None = None
     connection_params: dict[str, Any] | None = None
     db_type: DbType | None = None

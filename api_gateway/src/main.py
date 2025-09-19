@@ -351,7 +351,7 @@ async def get_resources(user: dict = Depends(get_current_user)):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{SOURCE_MANAGEMENT_URL}/api/v1/resources",
+                f"{SOURCE_MANAGEMENT_URL}/api/v1/resources/all",
                 headers={"X-User-ID": user["uid"]}
             )
             response.raise_for_status()

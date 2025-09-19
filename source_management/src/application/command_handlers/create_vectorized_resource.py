@@ -5,6 +5,7 @@ from aws_lambda_powertools import Logger
 
 from src.application.command_handlers.base import BaseCommandHandler
 from src.application.commands.create_vectorized_resource import CreateVectorizedResourceCommand
+from src.application.exceptions.authentication_exception import AuthenticationException
 from src.application.exceptions.domain_exception import DomainException
 from src.application.exceptions.value_error_exception import (
     CustomValueError,
@@ -94,6 +95,13 @@ class CreateVectorizedResourceCommandHandler(BaseCommandHandler):
                 extra={"type": command.vectorized_resource_type},
             )
             raise DomainException("It is not possible to process this type of resource")
+
+        async with self._unit_of_work as uow:
+            knowledge_base = await uow.knowledge_bases.get(command.knowledge_base_id)
+
+            if knowledge_base.user_id != command.user_id:
+                raise AuthenticationException("This User is not owner of knowledge base")
+
         result = await handler(command)
         return result
 

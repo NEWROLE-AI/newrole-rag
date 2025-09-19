@@ -1,13 +1,16 @@
 import fastapi
 from dependency_injector.wiring import Closing, Provide, inject
+from starlette import status
 
-from src.adapters.query_service import DynamoQueryService
+from src.adapters.query_service import DynamoQueryService, MongoQueryService
 from src.application.command_handlers.create_knowledge_base import CreateKnowledgeBaseCommandHandler
 from src.application.command_handlers.create_realtime_resource import CreateRealtimeResourceCommandHandler
 from src.application.command_handlers.create_vectorized_resource import CreateVectorizedResourceCommandHandler
 from src.application.commands.create_knowledge_base import CreateKnowledgeBaseCommand
 from src.application.commands.create_realtime_resource import CreateRealtimeResourceCommand
 from src.application.commands.create_vectorized_resource import CreateVectorizedResourceCommand
+from src.application.exceptions.authentication_exception import AuthenticationException
+from src.application.ports.unit_of_work import UnitOfWork
 from src.entrypoints.api.ioc import FastapiContainer
 from src.entrypoints.api.models import api_models
 
@@ -17,12 +20,14 @@ from src.entrypoints.api.models.api_models import ResourceType
 
 router = fastapi.APIRouter()
 
-from fastapi import Depends
+from fastapi import Depends, Header, HTTPException
+
 
 @router.post("/v1/resources")
 @inject
 async def create_resource(
     request: api_models.CreateResourceRequest,
+    user_id: str = Header(alias="X-User-ID"),
     vectorized_resource_handler: CreateVectorizedResourceCommandHandler = Depends(Closing[
         Provide[FastapiContainer.create_resource_handler]
     ]),
@@ -35,6 +40,7 @@ async def create_resource(
 
     Args:
         request (CreateResourceRequest): Contains knowledge_base_id, resource_type and optional file_type
+        headers (dict): Request headers containing user_id
         vectorized_resource_handler (CreateVectorizedResourceCommandHandler): Injected handler for vectorized resource creation
         realtime_resource_handler (CreateRealtimeResourceCommandHandler): Injected handler for realtime resource creation
 
@@ -45,28 +51,33 @@ async def create_resource(
         ValidationError: If request data is invalid
         Exception: For any other errors during processing
     """
-    if request.resource_type == ResourceType.VECTORIZED:
-        command = CreateVectorizedResourceCommand(
-            **request.model_dump(exclude_none=True, exclude={"resource_type"}),
-        )
-        logger.info(f"Created command: {command}")
-        logger.info(f"Handler instance before execution: {vectorized_resource_handler}")
-        result = await vectorized_resource_handler(command)
-        logger.info(f"Handler execution result: {result}")
-        response = api_models.CreateResourceResponse(**result)
-        logger.info(f"Returning response: {response}")
-    elif request.resource_type == ResourceType.REALTIME:
-        command = CreateRealtimeResourceCommand(
-            **request.model_dump(exclude_none=True, exclude={"resource_type"}),
-        )
-        logger.info(f"Created command: {command}")
-        logger.info(f"Handler instance before execution: {realtime_resource_handler}")
-        result = await realtime_resource_handler(command)
-        logger.info(f"Handler execution result: {result}")
-        response = api_models.CreateResourceResponse(**result)
-        logger.info(f"Returning response: {response}")
-    else:
-        raise Exception("Invalid resource type")
+    try:
+        if request.resource_type == ResourceType.VECTORIZED:
+            command = CreateVectorizedResourceCommand(
+                **request.model_dump(exclude_none=True, exclude={"resource_type"}),
+                user_id=user_id
+            )
+            logger.info(f"Created command: {command}")
+            logger.info(f"Handler instance before execution: {vectorized_resource_handler}")
+            result = await vectorized_resource_handler(command)
+            logger.info(f"Handler execution result: {result}")
+            response = api_models.CreateResourceResponse(**result)
+            logger.info(f"Returning response: {response}")
+        elif request.resource_type == ResourceType.REALTIME:
+            command = CreateRealtimeResourceCommand(
+                **request.model_dump(exclude_none=True, exclude={"resource_type"}),
+                user_id=user_id
+            )
+            logger.info(f"Created command: {command}")
+            logger.info(f"Handler instance before execution: {realtime_resource_handler}")
+            result = await realtime_resource_handler(command)
+            logger.info(f"Handler execution result: {result}")
+            response = api_models.CreateResourceResponse(**result)
+            logger.info(f"Returning response: {response}")
+        else:
+            raise Exception("Invalid resource type")
+    except AuthenticationException as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
     return response
 
 
@@ -74,6 +85,7 @@ async def create_resource(
 @inject
 async def create_knowledge_base(
     request: api_models.CreateKnowledgeBaseRequest,
+    user_id: str = Header(alias="X-User-ID"),
     handler: CreateKnowledgeBaseCommandHandler = Depends(
         Closing[Provide[FastapiContainer.create_knowledge_base_handler]]
     ),
@@ -83,6 +95,7 @@ async def create_knowledge_base(
 
     Args:
         request (CreateKnowledgeBaseRequest): Contains knowledge base name
+        headers (dict): Request headers containing user_id
         handler (CreateKnowledgeBaseCommandHandler): Injected handler for knowledge base creation
 
     Returns:
@@ -92,10 +105,12 @@ async def create_knowledge_base(
         ValidationError: If request data is invalid
         Exception: For any other errors during processing
     """
+
     logger.info(f"Received request for create_knowledge_base: {request}")
-    # Create a command from the name of the knowledge base
+    # Create a command from the name of the knowledge base with user_id
     command = CreateKnowledgeBaseCommand(
-        knowledge_base_name=request.knowledge_base_name
+        knowledge_base_name=request.knowledge_base_name,
+        user_id=user_id
     )
     logger.info(f"Created command: {command}")
     logger.info(f"Handler instance before execution: {handler}")
@@ -105,44 +120,18 @@ async def create_knowledge_base(
     logger.info(f"Returning response: {response}")
     return response
 
-@router.get("/v1/resources/{knowledge_base_id}")
-@inject
-async def get_resource_ids_by_knowledge_base_id(
-    knowledge_base_id: str,
-    query_service: DynamoQueryService = Depends(Closing[Provide[FastapiContainer.query_service]]),
-) -> api_models.GetResourceIdsByKnowledgeBaseResponse:
-    """
-    FAstAPI handler for retrieving all resource IDs associated with a knowledge base.
-
-    Args:
-        knowledge_base_id (str): knowledge base ID
-        query_service (DynamoQueryService): Injected query service for database operations
-
-    Returns:
-        GetResourceIdsByKnowledgeBaseResponse: Contains list of resource IDs
-
-    Raises:
-        ValidationError: If request data is invalid
-        Exception: For any other errors during processing
-    """
-    logger.info(f"Received request for get resource ids: {knowledge_base_id}")
-    result = await query_service.get_resource_ids_by_knowledge_base_id(
-        knowledge_base_id
-    )
-    logger.info("Query service execution completed")
-    response = api_models.GetResourceIdsByKnowledgeBaseResponse(**result)
-    logger.info(f"Returning response: {response}")
-    return response
-
 @router.get("/v1/resources/all")
 @inject
 async def get_all_resources(
-    query_service: DynamoQueryService = Depends(Closing[Provide[FastapiContainer.query_service]]),
+    user_id: str = Header(alias="X-User-ID"),
+    query_service: MongoQueryService = Depends(Closing[Provide[FastapiContainer.query_service]]),
+    unit_of_work: UnitOfWork = Depends(Closing[Provide[FastapiContainer.unit_of_work]]),
 ) -> api_models.GetAllResourcesResponse:
     """
-    FastAPI handler for retrieving all resources.
+    FastAPI handler for retrieving all resources for the current user.
 
     Args:
+        headers (dict): Request headers containing user_id
         query_service (DynamoQueryService): Injected query service for database operations
 
     Returns:
@@ -152,11 +141,90 @@ async def get_all_resources(
         ValidationError: If request data is invalid
         Exception: For any other errors during processing
     """
-    logger.info(f"Received request for get all resources.")
-    result = await query_service.get_all_resources()
+
+    async with unit_of_work as uow:
+        knowledge_base_list = await uow.knowledge_bases.get_list_by_id(user_id)
+
+    logger.info(f"Received request for get all resources by user_id: {user_id}")
+    result = await query_service.get_all_resources([knowledge_base.knowledge_base_id for knowledge_base in knowledge_base_list])
     response = api_models.GetAllResourcesResponse(knowledge_bases=result)
     logger.info(f"Returning response with {len(result)} knowledge bases")
     return response
+
+@router.get("/v1/resources/{knowledge_base_id}")
+@inject
+async def get_resource_ids_by_knowledge_base_id(
+    knowledge_base_id: str,
+    user_id: str = Header(alias="X-User-ID"),
+    query_service: MongoQueryService = Depends(Closing[Provide[FastapiContainer.query_service]]),
+    unit_of_work: UnitOfWork = Depends(Closing[Provide[FastapiContainer.unit_of_work]]),
+) -> api_models.GetResourceIdsByKnowledgeBaseResponse:
+    """
+    FAstAPI handler for retrieving all resource IDs associated with a knowledge base.
+
+    Args:
+        knowledge_base_id (str): knowledge base ID
+        headers (dict): Request headers containing user_id
+        query_service (DynamoQueryService): Injected query service for database operations
+
+    Returns:
+        GetResourceIdsByKnowledgeBaseResponse: Contains list of resource IDs
+
+    Raises:
+        ValidationError: If request data is invalid
+        Exception: For any other errors during processing
+    """
+    logger.info(f"Received request for get resource ids: {knowledge_base_id}, user_id: {user_id}")
+
+    async with unit_of_work as uow:
+        knowledge_base = await uow.knowledge_bases.get(knowledge_base_id)
+
+        if knowledge_base.user_id != user_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="This User is not owner of knowledge base")
+
+    result = await query_service.get_resource_ids_by_knowledge_base_id(
+        knowledge_base_id
+    )
+    logger.info("Query service execution completed")
+    response = api_models.GetResourceIdsByKnowledgeBaseResponse(**result)
+    logger.info(f"Returning response: {response}")
+    return response
+
+@router.get("/v1/knowledge-bases")
+@inject
+async def get_knowledge_bases(
+    user_id: str = Header(alias="X-User-ID"),
+    query_service: DynamoQueryService = Depends(Closing[Provide[FastapiContainer.query_service]]),
+    unit_of_work: UnitOfWork = Depends(Closing[Provide[FastapiContainer.unit_of_work]]),
+) -> api_models.GetKnowledgeBasesResponse:
+    """
+    FastAPI handler for retrieving all knowledge bases for the current user.
+
+    Args:
+        headers (dict): Request headers containing user_id
+        query_service (DynamoQueryService): Injected query service for database operations
+
+    Returns:
+        GetKnowledgeBasesResponse: Contains list of knowledge bases
+
+    Raises:
+        ValidationError: If request data is invalid
+        Exception: For any other errors during processing
+    """
+
+    logger.info(f"Received request for get knowledge bases for user: {user_id}")
+
+    async with unit_of_work as uow:
+        knowledge_base_list = await uow.knowledge_bases.get_list_by_id(user_id)
+
+    response = api_models.GetKnowledgeBasesResponse(knowledge_bases=[api_models.GetKnowledgeBasesResponse.KnowledgeBase(
+        knowledge_base_id=knowledge_base.knowledge_base_id,
+        name=knowledge_base.name,
+        user_id=knowledge_base.user_id,
+    ) for knowledge_base in knowledge_base_list])
+    logger.info(f"Returning response with {len(knowledge_base_list)} knowledge bases")
+    return response
+
 
 # Initializing dependency container
 container = FastapiContainer()

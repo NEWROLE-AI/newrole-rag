@@ -377,10 +377,7 @@ elif os.getenv("CONTAINER_TYPE") == "fastapi":
 
         query_service = providers.Singleton(
             MongoQueryService,
-            sql_session=db_session_factory,
-            mongo_client=mongo_client,
-            secrets_manager_client=secrets_client,
-            resource_table_name=secrets.get("resource_table_name"),
+            mongo_client=mongo_client
         )
 
         create_realtime_resource_handler = providers.Singleton(

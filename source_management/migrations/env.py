@@ -5,6 +5,7 @@ import urllib
 from logging.config import fileConfig
 
 import boto3
+import dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -14,19 +15,27 @@ from alembic import context
 from src.adapters import database
 
 
+# def get_database_url():
+#     database_url = os.getenv("DATABASE_URL", None)
+#     if not database_url:
+#         session = boto3.session.Session()
+#         secrets_manager = session.client(
+#             service_name="secretsmanager", region_name="eu-central-1"
+#         )
+#         info_rouce_management = json.loads(
+#             secrets_manager.get_secret_value(
+#                 SecretId="dev/ai-custom-bot/source-management"
+#             )["SecretString"]
+#         )
+#         database_url = info_rouce_management["database_url"]
+#     return database_url
+
 def get_database_url():
+    dotenv.load_dotenv()
     database_url = os.getenv("DATABASE_URL", None)
     if not database_url:
-        session = boto3.session.Session()
-        secrets_manager = session.client(
-            service_name="secretsmanager", region_name="eu-central-1"
-        )
-        info_rouce_management = json.loads(
-            secrets_manager.get_secret_value(
-                SecretId="dev/ai-custom-bot/source-management"
-            )["SecretString"]
-        )
-        database_url = info_rouce_management["database_url"]
+        # можно временно убрать или заменить на строку подключения локальную
+        raise RuntimeError("DATABASE_URL is not set")
     return database_url
 
 
