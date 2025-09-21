@@ -1,0 +1,512 @@
+openapi: 3.0.3
+info:
+  title: Ragnarök API Gateway
+  description: Central API Gateway for Ragnarök AI Platform with Firebase Authentication
+  version: 2.0.0
+  contact:
+    name: Ragnarök Team
+    
+servers:
+  - url: http://localhost:8003/api/v1
+    description: Development server
+  - url: https://api.ragnarok.ai/api/v1  
+    description: Production server
+
+components:
+  securitySchemes:
+    FirebaseAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase ID Token
+      
+  schemas:
+    User:
+      type: object
+      properties:
+        uid:
+          type: string
+          description: Firebase User ID
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+        email_verified:
+          type: boolean
+          
+    Prompt:
+      type: object
+      properties:
+        id:
+          type: string
+        prompt_text:
+          type: string
+        user_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          
+    Chatbot:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        model:
+          type: string
+          enum: [gpt-3.5-turbo, gpt-4, claude-3-sonnet]
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+        max_tokens:
+          type: integer
+        system_prompt:
+          type: string
+        user_id:
+          type: string
+          
+    KnowledgeBase:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        user_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          
+    Resource:
+      type: object
+      properties:
+        id:
+          type: string
+        knowledge_base_id:
+          type: string
+        resource_type:
+          type: string
+          enum: [vectorized, realtime]
+        file_type:
+          type: string
+          enum: [pdf, text, docx]
+        user_id:
+          type: string
+          
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+        chatbot_id:
+          type: string
+        user_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+        conversation_id:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        user_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+          
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+        code:
+          type: string
+
+security:
+  - FirebaseAuth: []
+
+paths:
+  # Authentication Endpoints
+  /auth/register:
+    post:
+      summary: Register new user
+      description: Register new user in Firebase and all microservices
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                display_name:
+                  type: string
+                firebase_uid:
+                  type: string
+      responses:
+        200:
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        400:
+          description: Registration failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /users/profile:
+    get:
+      summary: Get current user profile
+      description: Retrieve current authenticated user profile
+      responses:
+        200:
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        401:
+          description: Authentication required
+          
+  # Prompts Endpoints
+  /prompts:
+    get:
+      summary: Get user prompts
+      description: Retrieve all prompts for authenticated user
+      parameters:
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        200:
+          description: List of prompts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  prompts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Prompt'
+    post:
+      summary: Create new prompt
+      description: Create a new prompt template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prompt_text:
+                  type: string
+      responses:
+        200:
+          description: Prompt created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prompt'
+                
+  /prompts/{prompt_id}:
+    delete:
+      summary: Delete prompt
+      description: Delete specific prompt by ID
+      parameters:
+        - name: prompt_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Prompt deleted
+          
+  # Chatbots Endpoints
+  /chatbots:
+    get:
+      summary: Get user chatbots
+      description: Retrieve all chatbots for authenticated user
+      responses:
+        200:
+          description: List of chatbots
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chatbots:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Chatbot'
+    post:
+      summary: Create new chatbot
+      description: Create a new AI chatbot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                model:
+                  type: string
+                temperature:
+                  type: number
+                max_tokens:
+                  type: integer
+                system_prompt:
+                  type: string
+      responses:
+        200:
+          description: Chatbot created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chatbot'
+                
+  /chatbots/{chatbot_id}:
+    delete:
+      summary: Delete chatbot
+      parameters:
+        - name: chatbot_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Chatbot deleted
+          
+  # Knowledge Bases Endpoints
+  /knowledge-bases:
+    get:
+      summary: Get user knowledge bases
+      responses:
+        200:
+          description: List of knowledge bases
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  knowledge_bases:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KnowledgeBase'
+    post:
+      summary: Create knowledge base
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        200:
+          description: Knowledge base created
+          
+  /knowledge-bases/{kb_id}:
+    delete:
+      summary: Delete knowledge base
+      parameters:
+        - name: kb_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Knowledge base deleted
+          
+  # Resources Endpoints
+  /resources:
+    get:
+      summary: Get user resources
+      responses:
+        200:
+          description: List of resources
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resources:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Resource'
+    post:
+      summary: Create resource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                knowledge_base_id:
+                  type: string
+                resource_type:
+                  type: string
+                file_type:
+                  type: string
+      responses:
+        200:
+          description: Resource created
+          
+  /resources/{resource_id}:
+    delete:
+      summary: Delete resource
+      parameters:
+        - name: resource_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Resource deleted
+          
+  # Conversations Endpoints  
+  /conversations:
+    get:
+      summary: Get user conversations
+      responses:
+        200:
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+    post:
+      summary: Create conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                chatbot_id:
+                  type: string
+      responses:
+        200:
+          description: Conversation created
+          
+  /conversations/{conversation_id}:
+    delete:
+      summary: Delete conversation
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Conversation deleted
+          
+  /conversations/{conversation_id}/messages:
+    get:
+      summary: Get conversation messages
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+    post:
+      summary: Send message
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                content:
+                  type: string
+      responses:
+        200:
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+                
+  # Health Check
+  /health:
+    get:
+      summary: Health check
+      security: []
+      responses:
+        200:
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  timestamp:
+                    type: string

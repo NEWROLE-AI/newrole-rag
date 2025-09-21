@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Dashboard</title>
+    <title>Ragnarök AI</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -14,113 +14,270 @@
         }
 
         :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --secondary: #64748b;
+            /* ChatGPT-like Theme */
+            --primary: #10a37f;
+            --primary-dark: #0d8f6f;
+            --secondary: #6b7280;
             --success: #10b981;
             --error: #ef4444;
             --warning: #f59e0b;
-            --bg-main: #fafbfc;
-            --bg-card: #ffffff;
-            --text-primary: #0f172a;
-            --text-secondary: #64748b;
-            --border: #e2e8f0;
-            --border-hover: #cbd5e1;
-            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-            --radius: 12px;
-            --radius-sm: 8px;
-            --radius-lg: 16px;
+            
+            /* Dark theme colors */
+            --bg-sidebar: #171717;
+            --bg-main: #212121;
+            --bg-card: #2f2f2f;
+            --bg-input: #40414f;
+            --bg-hover: #2a2b32;
+            
+            /* Text colors */
+            --text-primary: #ececf1;
+            --text-secondary: #b4b4b4;
+            --text-muted: #8e8ea0;
+            
+            /* Border colors */
+            --border: #4d4d4f;
+            --border-hover: #565869;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4);
+            
+            --radius: 8px;
+            --radius-sm: 6px;
+            --radius-lg: 12px;
         }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--bg-main);
             min-height: 100vh;
             color: var(--text-primary);
             line-height: 1.6;
+            margin: 0;
+            overflow: hidden;
         }
 
         .hidden {
             display: none !important;
         }
 
-        .app-container {
-            min-height: 100vh;
+        /* Main Layout */
+        .app-layout {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .logo i {
+            font-size: 24px;
+            color: var(--primary);
+        }
+
+        /* Navigation */
+        .nav-section {
+            padding: 8px;
+            flex: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 2px;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* User Section */
+        .user-section {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .user-info:hover {
+            background: var(--bg-hover);
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--primary);
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
-        }
-
-        .main-card {
-            background: var(--bg-card);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-xl);
-            width: 100%;
-            max-width: 1200px;
-            overflow: hidden;
-            backdrop-filter: blur(10px);
-        }
-
-        /* Header */
-        .header {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             color: white;
-            padding: 24px 32px;
-            text-align: center;
+            font-weight: 600;
         }
 
-        .header h1 {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 8px;
+        .user-details {
+            flex: 1;
+            min-width: 0;
         }
 
-        .header p {
-            opacity: 0.9;
-            font-size: 16px;
+        .user-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 2px;
         }
 
-        /* Content */
-        .content {
-            padding: 32px;
-            max-height: 80vh;
-            overflow-y: auto;
+        .user-email {
+            font-size: 12px;
+            color: var(--text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
-        /* Auth Section */
-        #auth-section {
-            text-align: center;
-            max-width: 400px;
-            margin: 0 auto;
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-main);
+        }
+
+        /* Auth Screens */
+        .auth-container {
+            display: flex;
+            height: 100vh;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-main);
         }
 
         .auth-card {
             background: var(--bg-card);
-            border-radius: var(--radius);
+            border-radius: var(--radius-lg);
             padding: 32px;
-            box-shadow: var(--shadow-md);
+            width: 100%;
+            max-width: 400px;
             border: 1px solid var(--border);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .auth-logo {
+            font-size: 32px;
+            color: var(--primary);
+            margin-bottom: 16px;
         }
 
         .auth-title {
             font-size: 24px;
             font-weight: 600;
-            margin-bottom: 8px;
             color: var(--text-primary);
+            margin-bottom: 8px;
         }
 
         .auth-subtitle {
             color: var(--text-secondary);
-            margin-bottom: 24px;
+            font-size: 14px;
         }
 
+        /* Auth Choice Screen */
+        .auth-choice {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .auth-option {
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .auth-option:hover {
+            border-color: var(--primary);
+            background: var(--bg-hover);
+        }
+
+        .auth-option i {
+            font-size: 20px;
+            width: 24px;
+        }
+
+        .auth-option-content {
+            flex: 1;
+        }
+
+        .auth-option-title {
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .auth-option-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Form Elements */
         .form-group {
             margin-bottom: 16px;
-            text-align: left;
         }
 
         .form-label {
@@ -128,6 +285,7 @@
             margin-bottom: 6px;
             font-weight: 500;
             color: var(--text-primary);
+            font-size: 14px;
         }
 
         .form-input {
@@ -136,19 +294,61 @@
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
             font-size: 14px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-family: inherit;
             transition: all 0.2s ease;
-            background: var(--bg-card);
-            font-family: 'Inter', sans-serif;
         }
 
         .form-input:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgb(37 99 235 / 0.1);
+            box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
         }
 
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Error Messages */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            margin: 16px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .error-message i {
+            color: #ef4444;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            margin-bottom: 16px;
+            font-size: 14px;
+            transition: color 0.2s ease;
+        }
+
+        .back-btn:hover {
+            color: var(--text-primary);
+        }
+
+        /* Button Styles */
         .btn {
-            display: inline-flex;
+            display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
@@ -160,8 +360,13 @@
             cursor: pointer;
             transition: all 0.2s ease;
             text-decoration: none;
-            min-width: 120px;
-            font-family: 'Inter', sans-serif;
+            font-family: inherit;
+            width: 100%;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .btn-primary {
@@ -169,191 +374,190 @@
             color: white;
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: var(--primary-dark);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-lg);
         }
 
         .btn-secondary {
-            background: var(--bg-card);
-            color: var(--text-secondary);
+            background: var(--bg-input);
+            color: var(--text-primary);
             border: 1px solid var(--border);
         }
 
-        .btn-secondary:hover {
-            background: #f8fafc;
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--bg-hover);
             border-color: var(--border-hover);
         }
 
-        .btn-danger {
-            background: var(--error);
-            color: white;
+        .btn-google {
+            background: #ffffff;
+            color: #3c4043;
+            border: 1px solid #dadce0;
         }
 
-        .btn-danger:hover {
-            background: #dc2626;
+        .btn-google:hover {
+            background: #f8f9fa;
+            box-shadow: 0 1px 2px 0 rgba(60,64,67,.3);
+        }
+
+        .btn-google i {
+            color: #4285f4;
         }
 
         .btn-sm {
             padding: 8px 16px;
             font-size: 12px;
-            min-width: auto;
+            width: auto;
         }
 
-        /* User Info */
-        #user-info {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            padding: 16px 24px;
-            border-radius: var(--radius);
-            margin-bottom: 24px;
+        /* Loading Indicator */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Divider */
+        .divider {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-        }
-
-        .user-details h3 {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .user-email {
-            opacity: 0.9;
+            margin: 20px 0;
+            color: var(--text-muted);
             font-size: 14px;
         }
 
-        /* Dashboard Grid */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 24px;
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
         }
 
-        /* Section Cards */
-        .section-card {
-            background: var(--bg-card);
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            overflow: hidden;
-            transition: all 0.2s ease;
+        .divider::before {
+            margin-right: 16px;
         }
 
-        .section-card:hover {
-            box-shadow: var(--shadow-md);
-            border-color: var(--border-hover);
+        .divider::after {
+            margin-left: 16px;
         }
 
-        .section-header {
-            padding: 20px 24px 16px;
+        /* Content Area */
+        .content-header {
+            padding: 20px 24px;
             border-bottom: 1px solid var(--border);
-            background: #fafbfc;
+            background: var(--bg-card);
         }
 
-        .section-title {
-            font-size: 18px;
+        .content-title {
+            font-size: 20px;
             font-weight: 600;
             color: var(--text-primary);
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
+            margin-bottom: 4px;
         }
 
-        .section-title i {
-            width: 20px;
-            color: var(--primary);
+        .content-subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
         }
 
-        .section-body {
+        .content-body {
             padding: 24px;
-        }
-
-        /* Form Controls */
-        .controls-grid {
-            display: grid;
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-
-        .controls-row {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 12px;
-            align-items: end;
-        }
-
-        .controls-multi {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 12px;
-        }
-
-        /* List Items */
-        .list-container {
-            max-height: 300px;
+            flex: 1;
             overflow-y: auto;
         }
 
+        /* Content Grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-sidebar);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* List Items */
         .list-item {
-            background: #f8fafc;
+            background: var(--bg-input);
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
-            padding: 16px;
+            padding: 12px;
             margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            transition: all 0.2s ease;
         }
 
         .list-item:hover {
-            background: #f1f5f9;
             border-color: var(--border-hover);
-        }
-
-        .list-content {
-            flex: 1;
         }
 
         .list-title {
             font-weight: 500;
             color: var(--text-primary);
             margin-bottom: 4px;
+            font-size: 14px;
         }
 
         .list-meta {
             font-size: 12px;
-            color: var(--text-secondary);
+            color: var(--text-muted);
         }
 
-        .list-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        /* Chat Area */
+        /* Chat Interface */
         .chat-container {
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
 
         .chat-messages {
-            height: 300px;
+            flex: 1;
+            padding: 20px;
             overflow-y: auto;
-            padding: 16px;
-            background: #fafbfc;
         }
 
         .chat-input-area {
-            padding: 16px;
+            padding: 20px;
             border-top: 1px solid var(--border);
-            background: white;
+            background: var(--bg-card);
         }
 
-        .chat-input-row {
+        .chat-input-container {
             display: flex;
             gap: 12px;
             align-items: flex-end;
@@ -361,15 +565,16 @@
 
         .chat-input {
             flex: 1;
-            resize: vertical;
+            resize: none;
             min-height: 44px;
+            max-height: 120px;
         }
 
         /* Empty State */
         .empty-state {
             text-align: center;
-            padding: 32px;
-            color: var(--text-secondary);
+            padding: 40px 20px;
+            color: var(--text-muted);
         }
 
         .empty-state i {
@@ -377,6 +582,100 @@
             margin-bottom: 16px;
             opacity: 0.5;
         }
+
+        /* Form Controls */
+        .form-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .form-actions-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .controls-grid {
+            display: grid;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .controls-row .form-input {
+            flex: 1;
+        }
+
+        /* Toast Messages */
+        .toast {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            padding: 16px 20px;
+            border-radius: var(--radius);
+            font-weight: 500;
+            box-shadow: var(--shadow-lg);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            max-width: 400px;
+            border: 1px solid var(--border);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .toast.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .toast.info {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: fixed;
+                left: -100%;
+                z-index: 1000;
+                transition: left 0.3s ease;
+            }
+
+            .sidebar.open {
+                left: 0;
+            }
+
+            .main-content {
+                width: 100%;
+            }
+
+            .auth-card {
+                margin: 20px;
+                padding: 24px;
+            }
+        }
+
 
         /* Toast */
         .toast {
@@ -499,249 +798,401 @@
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <div class="main-card">
-            <div class="header">
-                <h1><i class="fas fa-brain"></i> AI Dashboard</h1>
-                <p>Управляйте вашими ИИ-проектами в одном месте</p>
-            </div>
-
-            <div class="content">
-                <!-- Auth Section -->
-                <div id="auth-section">
-                    <div class="auth-card">
-                        <h2 class="auth-title">Добро пожаловать</h2>
-                        <p class="auth-subtitle">Войдите в систему для продолжения</p>
-
-                        <div class="form-group">
-                            <label class="form-label">Email</label>
-                            <input type="email" id="email" class="form-input" value="admin" placeholder="Введите email">
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Пароль</label>
-                            <input type="password" id="password" class="form-input" value="admin" placeholder="Введите пароль">
-                        </div>
-
-                        <div style="display: flex; gap: 12px; margin-top: 24px;">
-                            <button class="btn btn-primary" onclick="loginWithEmail()">
-                                <i class="fas fa-sign-in-alt"></i> Войти
-                            </button>
-                            <button class="btn btn-secondary" onclick="registerWithEmail()">
-                                <i class="fas fa-user-plus"></i> Регистрация
-                            </button>
-                        </div>
-
-                        <div style="margin-top: 20px; padding: 12px; background: #f0f9ff; border-radius: 8px; color: #0369a1; font-size: 14px;">
-                            <i class="fas fa-info-circle"></i> Автоматический вход через 1 секунду...
-                        </div>
-                    </div>
+    <!-- Auth Choice Screen -->
+    <div id="auth-choice-screen" class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <i class="fas fa-hammer-war"></i>
                 </div>
-
-                <!-- User Info -->
-                <div id="user-info" class="hidden">
-                    <div class="user-details">
-                        <h3>Добро пожаловать!</h3>
-                        <div class="user-email">
-                            <i class="fas fa-envelope"></i> <span id="user-email">admin@admin.com</span>
-                            <span class="status-indicator status-online">
-                                <i class="fas fa-circle"></i> В сети
-                            </span>
-                        </div>
+                <h1 class="auth-title">Welcome to Ragnarök</h1>
+                <p class="auth-subtitle">Choose how you'd like to get started</p>
+            </div>
+            
+            <div class="auth-choice">
+                <div class="auth-option" onclick="showLoginScreen()">
+                    <i class="fas fa-sign-in-alt" style="color: var(--primary);"></i>
+                    <div class="auth-option-content">
+                        <div class="auth-option-title">Sign In</div>
+                        <div class="auth-option-desc">Access your existing account</div>
                     </div>
-                    <button class="btn btn-secondary btn-sm" onclick="logout()">
-                        <i class="fas fa-sign-out-alt"></i> Выход
+                    <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
+                </div>
+                
+                <div class="auth-option" onclick="showRegisterScreen()">
+                    <i class="fas fa-user-plus" style="color: var(--success);"></i>
+                    <div class="auth-option-content">
+                        <div class="auth-option-title">Create Account</div>
+                        <div class="auth-option-desc">Sign up for a new account</div>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
+                </div>
+                
+                <div class="divider">or</div>
+                
+                <button class="btn btn-google" onclick="loginWithGoogle()">
+                    <i class="fab fa-google"></i>
+                    Continue with Google
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="auth-container hidden">
+        <div class="auth-card">
+            <div class="auth-header">
+                <button class="back-btn" onclick="showAuthChoice()">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <div class="auth-logo">
+                    <i class="fas fa-hammer-war"></i>
+                </div>
+                <h1 class="auth-title">Sign In</h1>
+                <p class="auth-subtitle">Welcome back to Ragnarök</p>
+            </div>
+            
+            <div id="login-error" class="error-message hidden">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span id="login-error-text"></span>
+            </div>
+            
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" id="login-email" class="form-input" placeholder="Enter your email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="login-password" class="form-input" placeholder="Enter your password" required>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="login-btn">
+                        <span id="login-btn-text">Sign In</span>
+                        <div class="loading hidden" id="login-loading"></div>
                     </button>
                 </div>
+            </form>
+            
+            <div class="divider">or</div>
+            
+            <button class="btn btn-google" onclick="loginWithGoogle()">
+                <i class="fab fa-google"></i>
+                Continue with Google
+            </button>
+        </div>
+    </div>
 
-                <!-- Main Dashboard -->
-                <div id="main-dashboard" class="hidden">
-                    <div class="dashboard-grid">
-                        <!-- Prompts Section -->
-                        <div class="section-card">
-                            <div class="section-header">
-                                <h3 class="section-title">
-                                    <i class="fas fa-magic"></i> Промпты
-                                </h3>
+    <!-- Register Screen -->
+    <div id="register-screen" class="auth-container hidden">
+        <div class="auth-card">
+            <div class="auth-header">
+                <button class="back-btn" onclick="showAuthChoice()">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <div class="auth-logo">
+                    <i class="fas fa-hammer-war"></i>
+                </div>
+                <h1 class="auth-title">Create Account</h1>
+                <p class="auth-subtitle">Join Ragnarök today</p>
+            </div>
+            
+            <div id="register-error" class="error-message hidden">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span id="register-error-text"></span>
+            </div>
+            
+            <form onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" id="register-email" class="form-input" placeholder="Enter your email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="register-password" class="form-input" placeholder="Choose a password (min 6 characters)" required minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Confirm Password</label>
+                    <input type="password" id="register-password-confirm" class="form-input" placeholder="Confirm your password" required>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="register-btn">
+                        <span id="register-btn-text">Create Account</span>
+                        <div class="loading hidden" id="register-loading"></div>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App Layout -->
+    <div id="main-app" class="app-layout hidden">
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-hammer-war"></i>
+                    Ragnarök
+                </div>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-item active" onclick="showContent('chat', this)">
+                    <i class="fas fa-comments"></i>
+                    <span>Chat</span>
+                </div>
+                
+                <div class="nav-item" onclick="showContent('bots', this)">
+                    <i class="fas fa-robot"></i>
+                    <span>Chatbots</span>
+                </div>
+                
+                <div class="nav-item" onclick="showContent('prompts', this)">
+                    <i class="fas fa-magic"></i>
+                    <span>Prompts</span>
+                </div>
+                
+                <div class="nav-item" onclick="showContent('knowledge', this)">
+                    <i class="fas fa-database"></i>
+                    <span>Knowledge Bases</span>
+                </div>
+                
+                <div class="nav-item" onclick="showContent('resources', this)">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Resources</span>
+                </div>
+            </div>
+            
+            <div class="user-section">
+                <div class="user-info" onclick="toggleUserMenu()">
+                    <div class="user-avatar" id="user-avatar">U</div>
+                    <div class="user-details">
+                        <div class="user-name" id="user-name">User</div>
+                        <div class="user-email" id="user-email-display"></div>
+                    </div>
+                    <i class="fas fa-ellipsis-v" style="color: var(--text-muted);"></i>
+                </div>
+                
+                <div id="user-menu" class="hidden" style="margin-top: 8px;">
+                    <button class="btn btn-secondary btn-sm" onclick="logout()" style="width: 100%;">
+                        <i class="fas fa-sign-out-alt"></i> Sign Out
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Chat Content -->
+            <div id="chat-content" class="content-section">
+                <div class="content-header">
+                    <h2 class="content-title">Chat</h2>
+                    <p class="content-subtitle">Conversation with AI</p>
+                </div>
+                <div class="content-body">
+                    <div class="chat-container">
+                        <div class="chat-messages" id="chat-messages">
+                            <div class="empty-state">
+                                <i class="fas fa-comment-dots"></i>
+                                <p>Start a conversation</p>
                             </div>
-                            <div class="section-body">
-                                <div class="controls-grid">
+                        </div>
+                        <div class="chat-input-area">
+                            <div class="chat-input-container">
+                                <textarea id="chat-input" class="form-input chat-input" placeholder="Type your message..." rows="2"></textarea>
+                                <button class="btn btn-primary btn-sm" onclick="sendMessage()">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chatbots Content -->
+            <div id="bots-content" class="content-section hidden">
+                <div class="content-header">
+                    <h2 class="content-title">Chatbots</h2>
+                    <p class="content-subtitle">Manage your AI assistants</p>
+                </div>
+                <div class="content-body">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-plus"></i>
+                                Create New Chatbot
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="controls-grid">
+                                <div class="form-group">
+                                    <label class="form-label">Name</label>
+                                    <input type="text" id="chatbot-name" class="form-input" placeholder="Chatbot name">
+                                </div>
+                                <div class="controls-row">
                                     <div class="form-group">
-                                        <textarea id="prompt-text" class="form-input" rows="3" placeholder="Введите текст промпта..."></textarea>
-                                    </div>
-                                    <div class="controls-row">
-                                        <div></div>
-                                        <div style="display: flex; gap: 8px;">
-                                            <button class="btn btn-primary btn-sm" onclick="createPrompt()">
-                                                <i class="fas fa-plus"></i> Создать
-                                            </button>
-                                            <button class="btn btn-secondary btn-sm" onclick="loadPrompts()">
-                                                <i class="fas fa-sync"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="list-container" id="prompts-list">
-                                    <div class="empty-state">
-                                        <i class="fas fa-magic"></i>
-                                        <p>Промпты не найдены</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Knowledge Bases Section -->
-                        <div class="section-card">
-                            <div class="section-header">
-                                <h3 class="section-title">
-                                    <i class="fas fa-database"></i> Базы знаний
-                                </h3>
-                            </div>
-                            <div class="section-body">
-                                <div class="controls-grid">
-                                    <div class="controls-row">
-                                        <input type="text" id="kb-name" class="form-input" placeholder="Название базы знаний">
-                                        <div style="display: flex; gap: 8px;">
-                                            <button class="btn btn-primary btn-sm" onclick="createKnowledgeBase()">
-                                                <i class="fas fa-plus"></i> Создать
-                                            </button>
-                                            <button class="btn btn-secondary btn-sm" onclick="loadKnowledgeBases()">
-                                                <i class="fas fa-sync"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="list-container" id="knowledge-bases-list">
-                                    <div class="empty-state">
-                                        <i class="fas fa-database"></i>
-                                        <p>Базы знаний не найдены</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Resources Section -->
-                        <div class="section-card">
-                            <div class="section-header">
-                                <h3 class="section-title">
-                                    <i class="fas fa-file-alt"></i> Ресурсы
-                                </h3>
-                            </div>
-                            <div class="section-body">
-                                <div class="controls-grid">
-                                    <div class="controls-multi">
-                                        <select id="resource-kb" class="form-input">
-                                            <option value="">Выберите базу знаний</option>
-                                        </select>
-                                        <select id="resource-type" class="form-input">
-                                            <option value="vectorized">Векторизованный</option>
-                                            <option value="realtime">Реальное время</option>
-                                        </select>
-                                        <select id="file-type" class="form-input">
-                                            <option value="">Тип файла</option>
-                                            <option value="pdf">PDF</option>
-                                            <option value="text">Текст</option>
-                                            <option value="docx">Word Document</option>
-                                        </select>
-                                    </div>
-                                    <button class="btn btn-primary btn-sm" onclick="createResource()">
-                                        <i class="fas fa-plus"></i> Создать ресурс
-                                    </button>
-                                </div>
-                                <div class="list-container" id="resources-list">
-                                    <div class="empty-state">
-                                        <i class="fas fa-file-alt"></i>
-                                        <p>Ресурсы не найдены</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Chatbots Section -->
-                        <div class="section-card">
-                            <div class="section-header">
-                                <h3 class="section-title">
-                                    <i class="fas fa-robot"></i> Чатботы
-                                </h3>
-                            </div>
-                            <div class="section-body">
-                                <div class="controls-grid">
-                                    <input type="text" id="chatbot-name" class="form-input" placeholder="Название чатбота">
-                                    <div class="controls-multi">
+                                        <label class="form-label">Model</label>
                                         <select id="chatbot-model" class="form-input">
                                             <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                                             <option value="gpt-4">GPT-4</option>
                                             <option value="claude-3-sonnet">Claude 3 Sonnet</option>
                                         </select>
-                                        <input type="number" id="temperature" class="form-input" placeholder="Температура" min="0" max="2" step="0.1" value="0.7">
-                                        <input type="number" id="max-tokens" class="form-input" placeholder="Макс. токены" min="1" max="4000" value="1000">
                                     </div>
-                                    <textarea id="system-prompt" class="form-input" rows="2" placeholder="Системный промпт..."></textarea>
-                                    <div style="display: flex; gap: 8px;">
-                                        <button class="btn btn-primary btn-sm" onclick="createChatbot()">
-                                            <i class="fas fa-plus"></i> Создать чатбота
-                                        </button>
-                                        <button class="btn btn-secondary btn-sm" onclick="loadChatbots()">
-                                            <i class="fas fa-sync"></i>
-                                        </button>
+                                    <div class="form-group">
+                                        <label class="form-label">Temperature</label>
+                                        <input type="number" id="temperature" class="form-input" placeholder="0.7" min="0" max="2" step="0.1" value="0.7">
                                     </div>
                                 </div>
-                                <div class="list-container" id="chatbots-list">
-                                    <div class="empty-state">
-                                        <i class="fas fa-robot"></i>
-                                        <p>Чатботы не найдены</p>
-                                    </div>
+                                <div class="form-group">
+                                    <label class="form-label">System Prompt</label>
+                                    <textarea id="system-prompt" class="form-input" rows="3" placeholder="System prompt..."></textarea>
                                 </div>
+                                <button class="btn btn-primary" onclick="createChatbot()">
+                                    <i class="fas fa-plus"></i> Create Chatbot
+                                </button>
                             </div>
                         </div>
-
-                        <!-- Chat Section -->
-                        <div class="section-card" style="grid-column: 1 / -1;">
-                            <div class="section-header">
-                                <h3 class="section-title">
-                                    <i class="fas fa-comments"></i> Чат
-                                </h3>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <div id="chatbots-list">
+                            <div class="empty-state">
+                                <i class="fas fa-robot"></i>
+                                <p>No chatbots found</p>
                             </div>
-                            <div class="section-body">
-                                <div class="controls-grid">
-                                    <div class="controls-row">
-                                        <select id="chat-chatbot" class="form-input">
-                                            <option value="">Выберите чатбота</option>
-                                        </select>
-                                        <div style="display: flex; gap: 8px;">
-                                            <button class="btn btn-primary btn-sm" onclick="newConversation()">
-                                                <i class="fas fa-plus"></i> Новый диалог
-                                            </button>
-                                            <button class="btn btn-secondary btn-sm" onclick="loadConversations()">
-                                                <i class="fas fa-sync"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                                <div class="list-container" id="conversations-list" style="margin-bottom: 20px;">
-                                    <div class="empty-state">
-                                        <i class="fas fa-comments"></i>
-                                        <p>Диалоги не найдены</p>
-                                    </div>
-                                </div>
+            <!-- Prompts Content -->
+            <div id="prompts-content" class="content-section hidden">
+                <div class="content-header">
+                    <h2 class="content-title">Prompts</h2>
+                    <p class="content-subtitle">Manage your prompt templates</p>
+                </div>
+                <div class="content-body">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-plus"></i>
+                                Create New Prompt
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="form-label">Prompt Text</label>
+                                <textarea id="prompt-text" class="form-input" rows="4" placeholder="Enter your prompt..."></textarea>
+                            </div>
+                            <button class="btn btn-primary" onclick="createPrompt()">
+                                <i class="fas fa-plus"></i> Create Prompt
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <div id="prompts-list">
+                            <div class="empty-state">
+                                <i class="fas fa-magic"></i>
+                                <p>No prompts found</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                                <div class="chat-container">
-                                    <div class="chat-messages" id="chat-messages">
-                                        <div class="empty-state">
-                                            <i class="fas fa-comment-dots"></i>
-                                            <p>Выберите диалог для начала общения</p>
-                                        </div>
-                                    </div>
-                                    <div class="chat-input-area">
-                                        <div class="chat-input-row">
-                                            <textarea id="chat-input" class="form-input chat-input" placeholder="Введите сообщение..." rows="2"></textarea>
-                                            <button class="btn btn-primary" onclick="sendMessage()">
-                                                <i class="fas fa-paper-plane"></i>
-                                            </button>
-                                        </div>
-                                    </div>
+            <!-- Knowledge Bases Content -->
+            <div id="knowledge-content" class="content-section hidden">
+                <div class="content-header">
+                    <h2 class="content-title">Knowledge Bases</h2>
+                    <p class="content-subtitle">Manage your knowledge repositories</p>
+                </div>
+                <div class="content-body">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-plus"></i>
+                                Create Knowledge Base
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="form-label">Name</label>
+                                <input type="text" id="kb-name" class="form-input" placeholder="Knowledge base name">
+                            </div>
+                            <button class="btn btn-primary" onclick="createKnowledgeBase()">
+                                <i class="fas fa-plus"></i> Create Knowledge Base
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <div id="knowledge-bases-list">
+                            <div class="empty-state">
+                                <i class="fas fa-database"></i>
+                                <p>No knowledge bases found</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resources Content -->
+            <div id="resources-content" class="content-section hidden">
+                <div class="content-header">
+                    <h2 class="content-title">Resources</h2>
+                    <p class="content-subtitle">Manage your data sources</p>
+                </div>
+                <div class="content-body">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-plus"></i>
+                                Create Resource
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="controls-row">
+                                <div class="form-group">
+                                    <label class="form-label">Knowledge Base</label>
+                                    <select id="resource-kb" class="form-input">
+                                        <option value="">Select knowledge base</option>
+                                    </select>
                                 </div>
+                                <div class="form-group">
+                                    <label class="form-label">Type</label>
+                                    <select id="resource-type" class="form-input">
+                                        <option value="vectorized">Vectorized</option>
+                                        <option value="realtime">Real-time</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">File Type</label>
+                                <select id="file-type" class="form-input">
+                                    <option value="">Select file type</option>
+                                    <option value="pdf">PDF</option>
+                                    <option value="text">Text</option>
+                                    <option value="docx">Word Document</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary" onclick="createResource()">
+                                <i class="fas fa-plus"></i> Create Resource
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <div id="resources-list">
+                            <div class="empty-state">
+                                <i class="fas fa-file-alt"></i>
+                                <p>No resources found</p>
                             </div>
                         </div>
                     </div>
@@ -750,6 +1201,7 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
