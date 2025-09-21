@@ -1,4 +1,4 @@
-from fastapi import Depends, APIRouter
+from fastapi import Depends, APIRouter, Header
 from dependency_injector.wiring import Provide, inject
 
 from src.entrypoints.api.models import api_models
@@ -92,3 +92,55 @@ async def create_conversation(
     response = api_models.CreateConversationResponse(**result)
     logger.info(f"Returning response: {response}")
     return response
+
+
+# GET Endpoints
+@router.get("/v1/conversations")
+@inject
+async def get_conversations(
+    user_id: str = Header(alias="X-User-ID"),
+) -> dict:
+    """Get all conversations for user"""
+    logger.info(f"Getting conversations for user: {user_id}")
+    
+    # For now return empty list - would need to implement repository method
+    return {"conversations": []}
+
+
+@router.get("/v1/conversations/{conversation_id}/messages")
+@inject
+async def get_messages(
+    conversation_id: str,
+    user_id: str = Header(alias="X-User-ID"),
+) -> dict:
+    """Get messages for conversation"""
+    logger.info(f"Getting messages for conversation {conversation_id}, user: {user_id}")
+    
+    # For now return empty list - would need to implement repository method
+    return {"messages": []}
+
+
+# DELETE Endpoints
+@router.delete("/v1/conversations/{conversation_id}")
+@inject
+async def delete_conversation(
+    conversation_id: str,
+    user_id: str = Header(alias="X-User-ID"),
+) -> dict:
+    """Delete conversation by ID"""
+    logger.info(f"Deleting conversation {conversation_id} for user: {user_id}")
+    
+    # Would need to implement repository method for deletion
+    return {"message": f"Conversation {conversation_id} deleted successfully"}
+
+
+# User creation endpoint for API Gateway
+@router.post("/v1/users")
+@inject
+async def create_user(
+    request: dict,
+    user_id: str = Header(alias="X-User-ID"),
+) -> dict:
+    """Create user record in conversation service"""
+    logger.info(f"Creating user record: {request}")
+    return {"message": "User created in conversation service", "user_id": user_id}

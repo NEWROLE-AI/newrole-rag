@@ -81,7 +81,7 @@ async def create_resource(
     return response
 
 
-@router.post("/v1/knowledge_bases")
+@router.post("/v1/knowledge-bases")
 @inject
 async def create_knowledge_base(
     request: api_models.CreateKnowledgeBaseRequest,
@@ -119,6 +119,26 @@ async def create_knowledge_base(
     response = api_models.CreateKnowledgeBaseResponse(**result)
     logger.info(f"Returning response: {response}")
     return response
+
+# GET resources endpoint (without /all for API Gateway compatibility)
+@router.get("/v1/resources")
+@inject
+async def get_resources(
+    user_id: str = Header(alias="X-User-ID"),
+    query_service: MongoQueryService = Depends(Closing[Provide[FastapiContainer.query_service]]),
+    unit_of_work: UnitOfWork = Depends(Closing[Provide[FastapiContainer.unit_of_work]]),
+) -> api_models.GetAllResourcesResponse:
+    """Get all resources for user"""
+    logger.info(f"Getting resources for user: {user_id}")
+    
+    async with unit_of_work as uow:
+        knowledge_base_list = await uow.knowledge_bases.get_list_by_id(user_id)
+
+    result = await query_service.get_all_resources([knowledge_base.knowledge_base_id for knowledge_base in knowledge_base_list])
+    response = api_models.GetAllResourcesResponse(knowledge_bases=result)
+    logger.info(f"Returning response with {len(result)} knowledge bases")
+    return response
+
 
 @router.get("/v1/resources/all")
 @inject
@@ -224,6 +244,69 @@ async def get_knowledge_bases(
     ) for knowledge_base in knowledge_base_list])
     logger.info(f"Returning response with {len(knowledge_base_list)} knowledge bases")
     return response
+
+
+# DELETE Endpoints
+@router.delete("/v1/knowledge-bases/{kb_id}")
+@inject
+async def delete_knowledge_base(
+    kb_id: str,
+    user_id: str = Header(alias="X-User-ID"),
+    unit_of_work: UnitOfWork = Depends(Closing[Provide[FastapiContainer.unit_of_work]]),
+) -> dict:
+    """Delete knowledge base by ID"""
+    logger.info(f"Deleting knowledge base {kb_id} for user: {user_id}")
+    
+    try:
+        async with unit_of_work as uow:
+            # Check if knowledge base belongs to user and delete
+            kb = await uow.knowledge_bases.get(kb_id)
+            if kb and kb.user_id == user_id:
+                await uow.knowledge_bases.delete(kb_id)
+            else:
+                raise HTTPException(status_code=404, detail="Knowledge base not found or access denied")
+    except Exception as e:
+        logger.error(f"Error deleting knowledge base: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    return {"message": f"Knowledge base {kb_id} deleted successfully"}
+
+
+@router.delete("/v1/resources/{resource_id}")
+@inject
+async def delete_resource(
+    resource_id: str,
+    user_id: str = Header(alias="X-User-ID"),
+    unit_of_work: UnitOfWork = Depends(Closing[Provide[FastapiContainer.unit_of_work]]),
+) -> dict:
+    """Delete resource by ID"""
+    logger.info(f"Deleting resource {resource_id} for user: {user_id}")
+    
+    try:
+        async with unit_of_work as uow:
+            # Check if resource belongs to user and delete
+            resource = await uow.resources.get(resource_id)
+            if resource and resource.user_id == user_id:
+                await uow.resources.delete(resource_id)
+            else:
+                raise HTTPException(status_code=404, detail="Resource not found or access denied")
+    except Exception as e:
+        logger.error(f"Error deleting resource: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    return {"message": f"Resource {resource_id} deleted successfully"}
+
+
+# User creation endpoint for API Gateway
+@router.post("/v1/users")
+@inject
+async def create_user(
+    request: dict,
+    user_id: str = Header(alias="X-User-ID"),
+) -> dict:
+    """Create user record in source management"""
+    logger.info(f"Creating user record: {request}")
+    return {"message": "User created in source management", "user_id": user_id}
 
 
 # Initializing dependency container

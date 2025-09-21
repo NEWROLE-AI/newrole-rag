@@ -111,7 +111,7 @@ class FastapiContainer(DeclarativeContainer):
     openai_client = providers.Singleton(
         AsyncOpenAI, api_key=secrets.get("openai_api_key")
     )
-
+    
     ai_service = providers.Singleton(
         ClaudeAIService,
         client=anthropic_client,

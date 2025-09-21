@@ -140,7 +140,7 @@ services:
       SOURCE_MANAGEMENT_URL: http://source-management:8000
       CONVERSATION_URL: http://conversation:8000
       CONTAINER_TYPE: fastapi
-      ENVIRONMENT: dev
+      ENVIRONMENT: production
     depends_on:
       - vault
       - admin-panel

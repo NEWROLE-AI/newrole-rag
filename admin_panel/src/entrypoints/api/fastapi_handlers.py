@@ -13,6 +13,8 @@ from src.application.commands.change_settings_chat_bot import ChangeSettingsAgen
 from src.application.commands.update_prompt_text import UpdatePromptTextCommand
 from dependency_injector.wiring import inject, Provide
 from src.entrypoints.api.ioc import FastapiContainer
+from fastapi import Header
+from src.application.ports.unit_of_work import UnitOfWork
 
 
 router = fastapi.APIRouter()
@@ -124,6 +126,105 @@ async def update_prompt_text(
     result = await handler(command)
     return api_models.UpdatePromptTextResponse(**result)
 
+
+# GET Endpoints
+@router.get("/v1/prompts", response_model=api_models.GetPromptsResponse)
+@inject
+async def get_prompts(
+    user_id: str = Header(alias="X-User-ID"),
+    unit_of_work: UnitOfWork = Depends(Provide[FastapiContainer.unit_of_work]),
+) -> api_models.GetPromptsResponse:
+    """Get all prompts for user"""
+    logger.info(f"Getting prompts for user: {user_id}")
+    
+    async with unit_of_work as uow:
+        # Get all prompts for now - user_id filtering will be added after migration
+        prompts = await uow.prompts.get_all()
+    
+    response_prompts = [
+        api_models.Prompt(
+            id=str(p.id),
+            prompt_id=p.prompt_id,
+            text=p.text,
+            user_id=user_id  # Use current user_id since table doesn't have user_id column yet
+        ) for p in prompts
+    ]
+    
+    return api_models.GetPromptsResponse(prompts=response_prompts)
+
+
+@router.get("/v1/chatbots", response_model=api_models.GetChatbotsResponse)
+@inject
+async def get_chatbots(
+    user_id: str = Header(alias="X-User-ID"),
+    unit_of_work: UnitOfWork = Depends(Provide[FastapiContainer.unit_of_work]),
+) -> api_models.GetChatbotsResponse:
+    """Get all chatbots for user"""
+    logger.info(f"Getting chatbots for user: {user_id}")
+    
+    async with unit_of_work as uow:
+        # Get all chatbots for now - user_id filtering will be added after migration
+        chatbots = await uow.agent_chat_bots.get_all()
+    
+    response_chatbots = [
+        api_models.Chatbot(
+            id=str(cb.id),
+            agent_chat_bot_id=cb.agent_chat_bot_id,
+            name=cb.name,
+            prompt_id=cb.prompt_id,
+            knowledge_base_id=cb.knowledge_base_id,
+            user_id=user_id  # Use current user_id since table doesn't have user_id column yet
+        ) for cb in chatbots
+    ]
+    
+    return api_models.GetChatbotsResponse(chatbots=response_chatbots)
+
+
+# DELETE Endpoints
+@router.delete("/v1/prompts/{prompt_id}", response_model=api_models.DeleteResponse)
+@inject
+async def delete_prompt(
+    prompt_id: str,
+    user_id: str = Header(alias="X-User-ID"),
+    unit_of_work: UnitOfWork = Depends(Provide[FastapiContainer.unit_of_work]),
+) -> api_models.DeleteResponse:
+    """Delete prompt by ID"""
+    logger.info(f"Deleting prompt {prompt_id} for user: {user_id}")
+    
+    async with unit_of_work as uow:
+        # Delete prompt by ID - user isolation will be added after migration
+        await uow.prompts.delete(prompt_id)
+    
+    return api_models.DeleteResponse(message=f"Prompt {prompt_id} deleted successfully")
+
+
+@router.delete("/v1/chatbots/{chatbot_id}", response_model=api_models.DeleteResponse)
+@inject
+async def delete_chatbot(
+    chatbot_id: str,
+    user_id: str = Header(alias="X-User-ID"),
+    unit_of_work: UnitOfWork = Depends(Provide[FastapiContainer.unit_of_work]),
+) -> api_models.DeleteResponse:
+    """Delete chatbot by ID"""
+    logger.info(f"Deleting chatbot {chatbot_id} for user: {user_id}")
+    
+    async with unit_of_work as uow:
+        # Delete chatbot by ID - user isolation will be added after migration
+        await uow.agent_chat_bots.delete(chatbot_id)
+    
+    return api_models.DeleteResponse(message=f"Chatbot {chatbot_id} deleted successfully")
+
+
+# User creation endpoint for API Gateway
+@router.post("/v1/users")
+@inject  
+async def create_user(
+    request: dict,
+    user_id: str = Header(alias="X-User-ID"),
+) -> dict:
+    """Create user record in admin panel"""
+    logger.info(f"Creating user record: {request}")
+    return {"message": "User created in admin panel", "user_id": user_id}
 
 
 container = FastapiContainer()

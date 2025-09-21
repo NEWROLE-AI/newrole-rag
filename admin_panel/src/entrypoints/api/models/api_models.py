@@ -36,3 +36,32 @@ class UpdatePromptTextResponse(BaseModel):
 
 class ChangeSettingsAgentChatBotResponse(BaseModel):
     agent_chat_bot_id: str
+
+
+# GET Response Models
+class Prompt(BaseModel):
+    id: str
+    prompt_id: str
+    text: str
+    user_id: str
+
+
+class GetPromptsResponse(BaseModel):
+    prompts: list[Prompt]
+
+
+class Chatbot(BaseModel):
+    id: str
+    agent_chat_bot_id: str
+    name: str
+    prompt_id: str | None = None
+    knowledge_base_id: str | None = None
+    user_id: str
+
+
+class GetChatbotsResponse(BaseModel):
+    chatbots: list[Chatbot]
+
+
+class DeleteResponse(BaseModel):
+    message: str = "Deleted successfully"
