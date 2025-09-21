@@ -42,42 +42,63 @@ if vault_available:
 ENVIRONMENT = os.getenv("ENVIRONMENT", "dev")
 DEV_MODE = ENVIRONMENT == "dev"
 
-# Firebase configuration
+# Firebase configuration - работает в обоих режимах
 FIREBASE_ENABLED = False
-if not DEV_MODE:  # Only enable Firebase in production
+
+def initialize_firebase():
+    """Initialize Firebase Admin SDK"""
+    global FIREBASE_ENABLED
+    
     try:
         firebase_project_id = os.getenv("FIREBASE_PROJECT_ID")
-        firebase_private_key = os.getenv("FIREBASE_PRIVATE_KEY")
+        firebase_private_key = os.getenv("FIREBASE_PRIVATE_KEY") 
         firebase_client_email = os.getenv("FIREBASE_CLIENT_EMAIL")
+        
+        # Проверяем наличие обязательных переменных
+        if not all([firebase_project_id, firebase_private_key, firebase_client_email]):
+            logger.warning("Firebase credentials not found, running without Firebase Auth")
+            return False
 
-        if firebase_project_id and firebase_private_key and firebase_client_email:
-            # Clean private key format
-            private_key = firebase_private_key.replace('\\n', '\n')
-            if not private_key.startswith('-----BEGIN'):
-                try:
-                    private_key = base64.b64decode(firebase_private_key).decode('utf-8')
-                except Exception as e:
-                    logger.warning(f"Failed to decode private key: {e}")
+        # Clean private key format
+        private_key = firebase_private_key.replace('\\n', '\n')
+        if not private_key.startswith('-----BEGIN'):
+            try:
+                private_key = base64.b64decode(firebase_private_key).decode('utf-8')
+            except Exception as e:
+                logger.warning(f"Failed to decode private key: {e}")
 
-            firebase_config = {
-                "type": "service_account",
-                "project_id": firebase_project_id,
-                "private_key": private_key,
-                "client_email": firebase_client_email,
-                "client_id": "",
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{firebase_client_email}"
-            }
+        firebase_config = {
+            "type": "service_account",
+            "project_id": firebase_project_id,
+            "private_key": private_key,
+            "client_email": firebase_client_email,
+            "client_id": "",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{firebase_client_email}"
+        }
 
-            cred = credentials.Certificate(firebase_config)
-            firebase_admin.initialize_app(cred)
-            logger.info("Firebase Admin SDK initialized successfully")
+        # Проверяем, не инициализирован ли уже Firebase
+        if firebase_admin._apps:
+            logger.info("Firebase Admin SDK already initialized")
             FIREBASE_ENABLED = True
+            return True
+
+        cred = credentials.Certificate(firebase_config)
+        firebase_admin.initialize_app(cred)
+        logger.info(f"Firebase Admin SDK initialized successfully (Environment: {ENVIRONMENT})")
+        FIREBASE_ENABLED = True
+        return True
+        
     except Exception as e:
         logger.error(f"Failed to initialize Firebase: {e}")
         logger.warning("Continuing without Firebase authentication")
+        FIREBASE_ENABLED = False
+        return False
+
+# Инициализируем Firebase при запуске
+initialize_firebase()
 
 app = FastAPI(title="AI Assistant API Gateway", version="1.0.0")
 
@@ -102,45 +123,41 @@ async def get_current_user(
         request: Request,
         credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> Dict[str, Any]:
-    """Get current user - dev mode or Firebase"""
+    """Get current user - Firebase or dev mode fallback"""
 
-    # Dev mode - простая аутентификация
-    if DEV_MODE:
-        # Проверяем заголовок X-User-ID от nginx
-        user_id = request.headers.get("X-User-ID")
-        if user_id:
-            return {"uid": user_id, "email": "demo@example.com"}
+    # Сначала пытаемся Firebase аутентификацию если доступна
+    if FIREBASE_ENABLED and credentials:
+        try:
+            decoded_token = auth.verify_id_token(credentials.credentials)
+            logger.info(f"Firebase auth successful for user: {decoded_token.get('email', decoded_token['uid'])}")
+            return decoded_token
+        except Exception as e:
+            logger.error(f"Firebase token verification failed: {e}")
+            if not DEV_MODE:
+                # В продакшне это ошибка
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid Firebase authentication token"
+                )
+            # В dev режиме продолжаем к fallback логике
 
-        # Проверяем Bearer токен
-        if credentials:
-            token = credentials.credentials
-            if token in ["admin-token", "demo-token", "dev-dummy-token"]:
-                return {"uid": "demo-user", "email": "demo@example.com"}
+    # В production режиме требуем Firebase аутентификацию
+    logger.warning(f"Authentication failed - Firebase not available or invalid token")
+    logger.info(f"Environment: {ENVIRONMENT}, Firebase enabled: {FIREBASE_ENABLED}")
 
-        # В dev режиме разрешаем доступ без аутентификации
-        return {"uid": "anonymous", "email": "anonymous@example.com"}
-
-    # Production mode - Firebase аутентификация
+    # Production mode без Firebase - ошибка
     if not FIREBASE_ENABLED:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Firebase is not enabled or initialized"
+            detail="Firebase authentication is not available"
         )
 
+    # Нет учетных данных в продакшне
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication credentials required"
-        )
-
-    try:
-        decoded_token = auth.verify_id_token(credentials.credentials)
-        return decoded_token
-    except Exception as e:
-        logger.error(f"Token verification failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication token"
+            detail="Authentication credentials required",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
 
@@ -351,7 +368,7 @@ async def get_resources(user: dict = Depends(get_current_user)):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{SOURCE_MANAGEMENT_URL}/api/v1/resources/all",
+                f"{SOURCE_MANAGEMENT_URL}/api/v1/resources",
                 headers={"X-User-ID": user["uid"]}
             )
             response.raise_for_status()
@@ -507,4 +524,5 @@ async def health_check():
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
