@@ -166,3 +166,4 @@ cython_debug/
 /.idea/
 cc.en.300.bin
 /vault-config/
+.vscode
