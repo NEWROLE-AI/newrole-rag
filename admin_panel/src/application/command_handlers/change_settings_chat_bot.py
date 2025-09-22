@@ -58,6 +58,7 @@ class ChangeSettingsAgentChatBotCommandHandler(BaseCommandHandler):
                 agent_chat_bot_id=command.agent_chat_bot_id,
                 prompt_id=command.prompt_id,
                 knowledge_base_id=command.knowledge_base_id,
+                user_id=command.user_id
             )
             await uow.commit()
             logger.info("Agent chat bot updated")

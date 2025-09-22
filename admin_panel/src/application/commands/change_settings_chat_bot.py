@@ -8,3 +8,4 @@ class ChangeSettingsAgentChatBotCommand(BaseCommand):
     agent_chat_bot_id: str
     knowledge_base_id: str | None = None
     prompt_id: str | None = None
+    user_id: str | None = None

@@ -3,7 +3,7 @@ import os
 import traceback
 
 import boto3
-import hvac
+import dotenv
 from aws_lambda_powertools import Logger
 from aws_secretsmanager_caching import SecretCache, SecretCacheConfig
 from dependency_injector import providers
@@ -21,6 +21,8 @@ from src.application.command_handlers.create_prompt import CreatePromptCommandHa
 from src.application.command_handlers.update_prompt_text import UpdatePromptTextCommandHandler
 
 logger = Logger(service="ioc")
+
+dotenv.load_dotenv()
 
 if os.getenv("CONTAINER_TYPE") == "aws":
     def get_secret(secrets_cache: SecretCache, env: str) -> dict:

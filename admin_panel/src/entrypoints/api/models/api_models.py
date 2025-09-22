@@ -43,7 +43,6 @@ class Prompt(BaseModel):
     id: str
     prompt_id: str
     text: str
-    user_id: str
 
 
 class GetPromptsResponse(BaseModel):

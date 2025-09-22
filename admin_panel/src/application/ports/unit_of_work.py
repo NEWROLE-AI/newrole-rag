@@ -77,7 +77,7 @@ class PromptRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def delete(self, prompt_id: str):
+    async def delete(self, prompt_id: str, user_id: str):
         """Delete prompt by id."""
         raise NotImplementedError
 

@@ -2,6 +2,7 @@ from aws_lambda_powertools import Logger
 from sqlalchemy import update, select, delete, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.exceptions.authentication_exception import AuthenticationException
 from src.application.models.agent_chat_bot import AgentChatBot
 from src.application.models.prompt import Prompt
 from src.application.ports.unit_of_work import (
@@ -51,7 +52,7 @@ class SqlAgentChatBotRepository(AgentChatBotRepository):
         # First, verify prompt exists and get its internal ID
         get_prompt_id_query = text(
             """
-                    SELECT id FROM prompts
+                    SELECT id, user_id FROM prompts
                     WHERE prompt_id = :prompt_id
                 """
         )
@@ -65,6 +66,14 @@ class SqlAgentChatBotRepository(AgentChatBotRepository):
                 f"Prompt with ID {agent_chat_bot.prompt_id} does not exist"
             )
         prompt_id = row[0]
+
+        user_id = row[1]
+
+        if user_id != agent_chat_bot.user_id:
+            logger.error("Cannot add agent chat bot with different user ID")
+            raise AuthenticationException(
+                f"Cannot add agent chat bot with different user ID"
+            )
 
         # Insert the new agent chat bot
         insert_resource_query = text(
@@ -140,6 +149,20 @@ class SqlAgentChatBotRepository(AgentChatBotRepository):
 
             query = text(
                 """
+                SELECT user_id FROM agent_chat_bots
+                WHERE agent_chat_bot_id = :agent_chat_bot_id
+                """
+            )
+            result = await self._session.execute(
+                query, {"agent_chat_bot_id": agent_chat_bot_id}
+            )
+            row = result.fetchone()
+
+            if row[0] != kwargs.get("user_id"):
+                raise AuthenticationException("User ID does not match agent chat bot ID")
+
+            query = text(
+                """
                 SELECT id FROM prompts
                 WHERE prompt_id = :prompt_id
                 """
@@ -168,8 +191,24 @@ class SqlAgentChatBotRepository(AgentChatBotRepository):
         params = {"agent_chat_bot_id": agent_chat_bot_id, **kwargs}
         await self._session.execute(query, params)
 
-    async def delete(self, agent_chat_bot_id: str):
+    async def delete(self, agent_chat_bot_id: str, user_id: str):
         logger.info(f"Deleting chatbot: {agent_chat_bot_id}")
+
+        query = text(
+            """
+            SELECT user_id
+            FROM agent_chat_bots
+            WHERE agent_chat_bot_id = :agent_chat_bot_id
+            """
+        )
+        result = await self._session.execute(
+            query, {"agent_chat_bot_id": agent_chat_bot_id}
+        )
+        row = result.fetchone()
+
+        if row[0] != user_id:
+            raise AuthenticationException("User ID does not match agent chat bot ID")
+
         query = text(
             """
             DELETE FROM agent_chat_bots
@@ -177,6 +216,7 @@ class SqlAgentChatBotRepository(AgentChatBotRepository):
             """
         )
         await self._session.execute(query, {"agent_chat_bot_id": agent_chat_bot_id})
+        await self._session.commit()
 
     async def get_all(self, user_id: str):
         logger.info(f"Fetching chatbots for user_id: {user_id}")
@@ -260,8 +300,24 @@ class SqlPromptRepository(PromptRepository):
         rows = result.fetchall()
         return [Prompt(prompt_id=row.prompt_id, text=row.text, user_id=row.user_id) for row in rows]
 
-    async def delete(self, prompt_id: str):
+    async def delete(self, prompt_id: str, user_id: str):
         logger.info(f"Deleting prompt: {prompt_id}")
+
+        query = text(
+            """
+            SELECT user_id
+            FROM prompts
+            WHERE prompt_id = :prompt_id
+            """
+        )
+        result = await self._session.execute(
+            query, {"prompt_id": prompt_id}
+        )
+        row = result.fetchone()
+
+        if row[0] != user_id:
+            raise AuthenticationException("User ID does not match agent chat bot ID")
+
         query = text(
             """
             DELETE FROM prompts
@@ -269,6 +325,7 @@ class SqlPromptRepository(PromptRepository):
             """
         )
         await self._session.execute(query, {"prompt_id": prompt_id})
+        await self._session.commit()
 
     async def get(self, prompt_id: str) -> Prompt:
         """

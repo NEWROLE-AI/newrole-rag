@@ -1,7 +1,9 @@
 import fastapi
 from fastapi import Depends
 from fastapi.logger import logger
+from fastapi.exceptions import HTTPException
 
+from src.application.exceptions.authentication_exception import AuthenticationException
 from src.entrypoints.api.models import api_models
 from src.application.command_handlers.create_prompt import CreatePromptCommandHandler
 from src.application.command_handlers.create_agent_chat_bot import CreateAgentChatBotCommandHandler
@@ -68,13 +70,17 @@ async def create_agent_chat_bot(
         Exception: For any unexpected error during processing.
     """
     logger.info(f"Received request for agent chat bot: {request}")
-    command = CreateAgentChatBotCommand(
-        name=request.name,
-        prompt_id=request.prompt_id,
-        knowledge_base_id=request.knowledge_base_id,
-        user_id=user_id,
-    )
-    result = await handler(command)
+    try:
+        command = CreateAgentChatBotCommand(
+            name=request.name,
+            prompt_id=request.prompt_id,
+            knowledge_base_id=request.knowledge_base_id,
+            user_id=user_id,
+        )
+        result = await handler(command)
+    except AuthenticationException as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
     return api_models.CreateAgentChatBotResponse(**result)
 
 
@@ -82,6 +88,7 @@ async def create_agent_chat_bot(
 @inject
 async def change_settings_agent_chat_bot(
     request: api_models.ChangeSettingsAgentChatBotRequest,
+    user_id: str = Header(alias="X-User-ID"),
     handler: ChangeSettingsAgentChatBotCommandHandler = Depends(Provide[FastapiContainer.change_settings_agent_chat_bot_handler]),
 ) -> api_models.ChangeSettingsAgentChatBotResponse:
     """
@@ -99,8 +106,11 @@ async def change_settings_agent_chat_bot(
         Exception: For any unexpected error during processing.
     """
     logger.info(f"Received change settings request: {request}")
-    command = ChangeSettingsAgentChatBotCommand(**request.model_dump())
-    result = await handler(command)
+    try:
+        command = ChangeSettingsAgentChatBotCommand(**request.model_dump(), user_id=user_id)
+        result = await handler(command)
+    except AuthenticationException as e:
+        raise HTTPException(status_code=403, detail=str(e))
     return api_models.ChangeSettingsAgentChatBotResponse(**result)
 
 
@@ -147,8 +157,7 @@ async def get_prompts(
         api_models.Prompt(
             id=p.prompt_id,
             prompt_id=p.prompt_id,
-            text=p.text,
-            user_id=p.user_id
+            text=p.text
         ) for p in prompts
     ]
     
@@ -191,10 +200,13 @@ async def delete_prompt(
 ) -> api_models.DeleteResponse:
     """Delete prompt by ID"""
     logger.info(f"Deleting prompt {prompt_id} for user: {user_id}")
-    
-    async with unit_of_work as uow:
-        # Delete prompt by ID - user isolation will be added after migration
-        await uow.prompts.delete(prompt_id)
+
+    try:
+        async with unit_of_work as uow:
+            # Delete prompt by ID - user isolation will be added after migration
+            await uow.prompts.delete(prompt_id, user_id)
+    except AuthenticationException as e:
+        raise HTTPException(status_code=403, detail=str(e))
     
     return api_models.DeleteResponse(message=f"Prompt {prompt_id} deleted successfully")
 
@@ -208,24 +220,14 @@ async def delete_chatbot(
 ) -> api_models.DeleteResponse:
     """Delete chatbot by ID"""
     logger.info(f"Deleting chatbot {chatbot_id} for user: {user_id}")
-    
-    async with unit_of_work as uow:
-        # Delete chatbot by ID - user isolation will be added after migration
-        await uow.agent_chat_bots.delete(chatbot_id)
+    try:
+        async with unit_of_work as uow:
+            # Delete chatbot by ID - user isolation will be added after migration
+            await uow.agent_chat_bots.delete(chatbot_id, user_id)
+    except AuthenticationException as e:
+        raise HTTPException(status_code=403, detail=str(e))
     
     return api_models.DeleteResponse(message=f"Chatbot {chatbot_id} deleted successfully")
-
-
-# User creation endpoint for API Gateway
-@router.post("/v1/users")
-@inject  
-async def create_user(
-    request: dict,
-    user_id: str = Header(alias="X-User-ID"),
-) -> dict:
-    """Create user record in admin panel"""
-    logger.info(f"Creating user record: {request}")
-    return {"message": "User created in admin panel", "user_id": user_id}
 
 
 container = FastapiContainer()
