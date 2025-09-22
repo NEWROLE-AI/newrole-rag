@@ -106,7 +106,7 @@ services:
     depends_on:
       - source-management-postgres
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@source-management-postgres:5432/source_management
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@source-management-postgres:5432/source-management
     entrypoint: >
       bash -c "alembic upgrade head"
     restart: "no"

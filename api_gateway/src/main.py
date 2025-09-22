@@ -329,12 +329,13 @@ async def get_knowledge_bases(user: dict = Depends(get_current_user)):
 
 @app.post("/api/v1/knowledge-bases")
 async def create_knowledge_base(kb_data: dict, user: dict = Depends(get_current_user)):
-    kb_data["user_id"] = user["uid"]
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{SOURCE_MANAGEMENT_URL}/api/v1/knowledge-bases",
-                json=kb_data,
+                json={
+                    "knowledge_base_name": kb_data["name"],
+                },
                 headers={"X-User-ID": user["uid"]}
             )
             response.raise_for_status()
