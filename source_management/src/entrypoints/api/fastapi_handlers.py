@@ -120,25 +120,6 @@ async def create_knowledge_base(
     logger.info(f"Returning response: {response}")
     return response
 
-# GET resources endpoint (without /all for API Gateway compatibility)
-@router.get("/v1/resources")
-@inject
-async def get_resources(
-    user_id: str = Header(alias="X-User-ID"),
-    query_service: MongoQueryService = Depends(Closing[Provide[FastapiContainer.query_service]]),
-    unit_of_work: UnitOfWork = Depends(Closing[Provide[FastapiContainer.unit_of_work]]),
-) -> api_models.GetAllResourcesResponse:
-    """Get all resources for user"""
-    logger.info(f"Getting resources for user: {user_id}")
-    
-    async with unit_of_work as uow:
-        knowledge_base_list = await uow.knowledge_bases.get_list_by_id(user_id)
-
-    result = await query_service.get_all_resources([knowledge_base.knowledge_base_id for knowledge_base in knowledge_base_list])
-    response = api_models.GetAllResourcesResponse(knowledge_bases=result)
-    logger.info(f"Returning response with {len(result)} knowledge bases")
-    return response
-
 
 @router.get("/v1/resources/all")
 @inject

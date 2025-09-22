@@ -17,3 +17,4 @@ class AgentChatBot:
     agent_chat_bot_id: str
     prompt_id: str
     knowledge_base_id: str
+    user_id: str

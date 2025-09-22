@@ -13,3 +13,4 @@ class Prompt:
 
     prompt_id: str
     text: str
+    user_id: str

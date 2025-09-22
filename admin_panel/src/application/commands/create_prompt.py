@@ -6,3 +6,4 @@ from src.application.commands.base import BaseCommand
 @dataclass
 class CreatePromptCommand(BaseCommand):
     text: str
+    user_id: str

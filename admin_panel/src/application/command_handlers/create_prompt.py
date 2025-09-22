@@ -49,7 +49,7 @@ class CreatePromptCommandHandler(BaseCommandHandler):
         )
         async with self._unit_of_work as uow:
             # Create a new prompt with a unique ID
-            prompt = Prompt(prompt_id=str(uuid.uuid4()), text=command.text)
+            prompt = Prompt(prompt_id=str(uuid.uuid4()), text=command.text, user_id=command.user_id)
             logger.info(
                 "Create prompt",
                 extra={

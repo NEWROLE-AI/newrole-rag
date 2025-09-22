@@ -54,6 +54,7 @@ class CreateAgentChatBotCommandHandler(BaseCommandHandler):
                 name=command.name,
                 prompt_id=command.prompt_id,
                 knowledge_base_id=command.knowledge_base_id,
+                user_id=command.user_id or "system",
             )
             logger.info(
                 "Create agent chat bot",
@@ -61,6 +62,7 @@ class CreateAgentChatBotCommandHandler(BaseCommandHandler):
                     "agent_name": agent.name,
                     "prompt_id": agent.prompt_id,
                     "knowledge_base_id": agent.knowledge_base_id,
+                    "user_id": agent.user_id,
                 },
             )
             # Store the agent chat bot in the database

@@ -69,8 +69,8 @@ class SqlAgentChatBotRepository(AgentChatBotRepository):
         # Insert the new agent chat bot
         insert_resource_query = text(
             """
-                    INSERT INTO agent_chat_bots (name, agent_chat_bot_id, prompt_id, knowledge_base_id)
-                    VALUES (:name, :agent_chat_bot_id, :prompt_id, :knowledge_base_id)
+                    INSERT INTO agent_chat_bots (name, agent_chat_bot_id, prompt_id, knowledge_base_id, user_id)
+                    VALUES (:name, :agent_chat_bot_id, :prompt_id, :knowledge_base_id, :user_id)
                 """
         )
         await self._session.execute(
@@ -80,6 +80,7 @@ class SqlAgentChatBotRepository(AgentChatBotRepository):
                 "agent_chat_bot_id": agent_chat_bot.agent_chat_bot_id,
                 "knowledge_base_id": agent_chat_bot.knowledge_base_id,
                 "prompt_id": prompt_id,
+                "user_id": agent_chat_bot.user_id,
             },
         )
         logger.info(f"Agent {agent_chat_bot.agent_chat_bot_id} added successfully")
@@ -100,9 +101,9 @@ class SqlAgentChatBotRepository(AgentChatBotRepository):
         logger.info(f"Fetching agent with ID: {agent_chat_bot_id}")
         query = text(
             """
-                   SELECT name, knowledge_base_id, prompts.prompt_id
+                   SELECT name, knowledge_base_id, prompts.prompt_id, agent_chat_bots.user_id
                    FROM agent_chat_bots
-                   INNER JOIN prompts ON prompts.prompt_id = :prompt_id
+                   INNER JOIN prompts ON prompts.id = agent_chat_bots.prompt_id
                    WHERE agent_chat_bot_id = :agent_chat_bot_id
                """
         )
@@ -116,6 +117,7 @@ class SqlAgentChatBotRepository(AgentChatBotRepository):
                 agent_chat_bot_id=agent_chat_bot_id,
                 knowledge_base_id=row.knowledge_base_id,
                 prompt_id=row.prompt_id,
+                user_id=row.user_id,
             )
         else:
             raise ValueError(f"Agent with ID {agent_chat_bot_id} not found")
@@ -160,11 +162,45 @@ class SqlAgentChatBotRepository(AgentChatBotRepository):
             f"""
                 UPDATE agent_chat_bots
                 SET {set_clause}
-                WHERE agent_chat_bot_id = :agent_chat_bot_id
+                WHERE agent_chat_bot_id = :agent_chat_bot_id AND user_id = :user_id
             """
         )
         params = {"agent_chat_bot_id": agent_chat_bot_id, **kwargs}
         await self._session.execute(query, params)
+
+    async def delete(self, agent_chat_bot_id: str):
+        logger.info(f"Deleting chatbot: {agent_chat_bot_id}")
+        query = text(
+            """
+            DELETE FROM agent_chat_bots
+            WHERE agent_chat_bot_id = :agent_chat_bot_id
+            """
+        )
+        await self._session.execute(query, {"agent_chat_bot_id": agent_chat_bot_id})
+
+    async def get_all(self, user_id: str):
+        logger.info(f"Fetching chatbots for user_id: {user_id}")
+        query = text(
+            """
+            SELECT agent_chat_bot_id, name, knowledge_base_id, prompts.prompt_id, agent_chat_bots.user_id
+            FROM agent_chat_bots
+            LEFT JOIN prompts ON prompts.id = agent_chat_bots.prompt_id
+            WHERE agent_chat_bots.user_id = :user_id
+            ORDER BY agent_chat_bots.id DESC
+            """
+        )
+        result = await self._session.execute(query, {"user_id": user_id})
+        rows = result.fetchall()
+        return [
+            AgentChatBot(
+                agent_chat_bot_id=row.agent_chat_bot_id,
+                name=row.name,
+                knowledge_base_id=row.knowledge_base_id,
+                prompt_id=row.prompt_id,
+                user_id=row.user_id,
+            )
+            for row in rows
+        ]
 
 
 class SqlPromptRepository(PromptRepository):
@@ -197,8 +233,8 @@ class SqlPromptRepository(PromptRepository):
         logger.info(f"Adding prompt: {prompt}")
         query = text(
             """
-                    INSERT INTO prompts (prompt_id, text)
-                    VALUES (:prompt_id, :text)
+                    INSERT INTO prompts (prompt_id, text, user_id)
+                    VALUES (:prompt_id, :text, :user_id)
                 """
         )
         await self._session.execute(
@@ -206,8 +242,33 @@ class SqlPromptRepository(PromptRepository):
             {
                 "prompt_id": prompt.prompt_id,
                 "text": prompt.text,
+                "user_id": prompt.user_id,
             },
         )
+    
+    async def get_all(self, user_id: str):
+        logger.info(f"Fetching prompts for user_id: {user_id}")
+        query = text(
+            """
+            SELECT prompt_id, text, user_id
+            FROM prompts
+            WHERE user_id = :user_id
+            ORDER BY id DESC
+            """
+        )
+        result = await self._session.execute(query, {"user_id": user_id})
+        rows = result.fetchall()
+        return [Prompt(prompt_id=row.prompt_id, text=row.text, user_id=row.user_id) for row in rows]
+
+    async def delete(self, prompt_id: str):
+        logger.info(f"Deleting prompt: {prompt_id}")
+        query = text(
+            """
+            DELETE FROM prompts
+            WHERE prompt_id = :prompt_id
+            """
+        )
+        await self._session.execute(query, {"prompt_id": prompt_id})
 
     async def get(self, prompt_id: str) -> Prompt:
         """

@@ -8,3 +8,4 @@ class CreateAgentChatBotCommand(BaseCommand):
     name: str
     prompt_id: str | None = None
     knowledge_base_id: str | None = None
+    user_id: str | None = None

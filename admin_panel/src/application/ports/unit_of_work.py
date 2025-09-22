@@ -41,6 +41,16 @@ class AgentChatBotRepository(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    async def delete(self, agent_chat_bot_id: str):
+        """Delete chatbot by id."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_all(self, user_id: str):
+        """List chatbots for user."""
+        raise NotImplementedError
+
 
 class PromptRepository(ABC):
     """Repository interface for managing prompts."""
@@ -64,6 +74,16 @@ class PromptRepository(ABC):
             prompt_id: Unique identifier of the prompt to update
             **kwargs: Settings to update, may include text
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def delete(self, prompt_id: str):
+        """Delete prompt by id."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_all(self, user_id: str):
+        """List prompts for user."""
         raise NotImplementedError
 
 

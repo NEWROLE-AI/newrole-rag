@@ -23,6 +23,7 @@ router = fastapi.APIRouter()
 @inject
 async def create_prompt(
     request: api_models.CreatePromptRequest,
+    user_id: str = Header(alias="X-User-ID"),
     handler: CreatePromptCommandHandler = Depends(Provide[FastapiContainer.create_prompt_handler]),
 ) -> api_models.CreatePromptResponse:
     """
@@ -40,7 +41,7 @@ async def create_prompt(
         Exception: For any unexpected error during processing.
     """
     logger.info(f"Received request for prompt: {request}")
-    command = CreatePromptCommand(text=request.text)
+    command = CreatePromptCommand(text=request.text, user_id=user_id)
     result = await handler(command)
     return api_models.CreatePromptResponse(**result)
 
@@ -49,6 +50,7 @@ async def create_prompt(
 @inject
 async def create_agent_chat_bot(
     request: api_models.CreateAgentChatBotRequest,
+    user_id: str = Header(alias="X-User-ID"),
     handler: CreateAgentChatBotCommandHandler = Depends(Provide[FastapiContainer.create_agent_chat_bot_handler]),
 ) -> api_models.CreateAgentChatBotResponse:
     """
@@ -70,6 +72,7 @@ async def create_agent_chat_bot(
         name=request.name,
         prompt_id=request.prompt_id,
         knowledge_base_id=request.knowledge_base_id,
+        user_id=user_id,
     )
     result = await handler(command)
     return api_models.CreateAgentChatBotResponse(**result)
@@ -138,15 +141,14 @@ async def get_prompts(
     logger.info(f"Getting prompts for user: {user_id}")
     
     async with unit_of_work as uow:
-        # Get all prompts for now - user_id filtering will be added after migration
-        prompts = await uow.prompts.get_all()
+        prompts = await uow.prompts.get_all(user_id)
     
     response_prompts = [
         api_models.Prompt(
-            id=str(p.id),
+            id=p.prompt_id,
             prompt_id=p.prompt_id,
             text=p.text,
-            user_id=user_id  # Use current user_id since table doesn't have user_id column yet
+            user_id=p.user_id
         ) for p in prompts
     ]
     
@@ -163,17 +165,16 @@ async def get_chatbots(
     logger.info(f"Getting chatbots for user: {user_id}")
     
     async with unit_of_work as uow:
-        # Get all chatbots for now - user_id filtering will be added after migration
-        chatbots = await uow.agent_chat_bots.get_all()
+        chatbots = await uow.agent_chat_bots.get_all(user_id)
     
     response_chatbots = [
         api_models.Chatbot(
-            id=str(cb.id),
+            id=cb.agent_chat_bot_id,
             agent_chat_bot_id=cb.agent_chat_bot_id,
             name=cb.name,
             prompt_id=cb.prompt_id,
             knowledge_base_id=cb.knowledge_base_id,
-            user_id=user_id  # Use current user_id since table doesn't have user_id column yet
+            user_id=cb.user_id
         ) for cb in chatbots
     ]
     

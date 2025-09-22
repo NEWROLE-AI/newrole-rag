@@ -261,7 +261,7 @@ async def get_chatbots(user: dict = Depends(get_current_user)):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{ADMIN_PANEL_URL}/api/v1/chatbots",
+                f"{ADMIN_PANEL_URL}/api/v1/agent_chat_bots",
                 headers={"X-User-ID": user["uid"]}
             )
             response.raise_for_status()
@@ -279,7 +279,7 @@ async def create_chatbot(chatbot_data: dict, user: dict = Depends(get_current_us
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{ADMIN_PANEL_URL}/api/v1/chatbots",
+                f"{ADMIN_PANEL_URL}/api/v1/agent_chat_bots",
                 json=chatbot_data,
                 headers={"X-User-ID": user["uid"]}
             )

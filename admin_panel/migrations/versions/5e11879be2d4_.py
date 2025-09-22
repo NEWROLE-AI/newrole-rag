@@ -26,6 +26,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("prompt_id", sa.String(), nullable=False),
         sa.Column("text", sa.String(), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False, server_default="system"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -35,6 +36,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("prompt_id", sa.Integer(), nullable=True),
         sa.Column("knowledge_base_id", sa.String(), nullable=True),
+        sa.Column("user_id", sa.String(length=128), nullable=False, server_default="system"),
         sa.ForeignKeyConstraint(
             ["prompt_id"],
             ["prompts.id"],
