@@ -376,13 +376,6 @@ class SqlKnowledgeBaseRepository(KnowledgeBaseRepository):
             query, {"user_id": user_id}
         )
         res = result.fetchall()
-        print(res)
-
-        if not res:
-            raise CustomValueError(
-                error_status=ErrorStatus.NOT_FOUND,
-                message=f"Knowledge base with user ID {user_id} not found",
-            )
 
         knowledge_base_list = []
         for row in res:
