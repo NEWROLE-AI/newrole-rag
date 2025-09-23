@@ -7,6 +7,10 @@ let firebase = null;
 let auth = null;
 let tokenRefreshInterval = null;
 let currentSection = 'chat';
+// Resource creation state
+let selectedResourceCategory = 'vectorized';
+let selectedResourceType = null;
+let presetKnowledgeBaseId = null;
 
 // API Configuration
 const API_CONFIG = window.API_CONFIG || {
@@ -417,7 +421,7 @@ async function initApp() {
         console.log('Firebase initialized successfully - checking for existing session');
         
         // Firebase onAuthStateChanged will fire and handle session restoration automatically
-        setTimeout(() => {
+    setTimeout(() => {
             // If no session restored after 2 seconds, show ready message
             if (!currentUser) {
                 showMessage("Ragnarök is ready", "info");
@@ -537,7 +541,6 @@ async function loadPrompts() {
                 item.className = "list-item";
                 item.innerHTML = `
                     <div class="list-content">
-                        <div class="list-title">ID: ${p.id || 'N/A'}</div>
                         <div class="list-meta">Text: ${p.prompt_text || p.text || 'N/A'}</div>
                     </div>
                     <div class="list-actions">
@@ -574,14 +577,16 @@ async function deletePrompt(id) {
 
 /* ========================= Knowledge Bases ========================= */
 async function createKnowledgeBase() {
-    const name = document.getElementById("kb-name")?.value.trim();
+    const kbNameInput = document.getElementById("kb-name-input") || document.getElementById("kb-name");
+    const name = kbNameInput?.value?.trim();
     if (!name) return showMessage("Please enter knowledge base name", "error");
 
     try {
         await apiCall("/knowledge-bases", "POST", { name });
         showMessage("Knowledge base created", "success");
-        document.getElementById("kb-name").value = "";
-        await loadKnowledgeBases();
+        if (kbNameInput) kbNameInput.value = "";
+        closeKbCreation();
+        await loadKnowledgeBasesWithResources();
     } catch (e) {
         showMessage(`Error создания базы знаний: ${e.message}`, "error");
     }
@@ -592,7 +597,7 @@ async function loadKnowledgeBases() {
         const result = await apiCall("/knowledge-bases", "GET");
         const kbs = result.knowledge_bases || result || [];
         const list = document.getElementById("knowledge-bases-list");
-        const select = document.getElementById("resource-kb");
+        const select = document.getElementById("resource-kb-select");
 
         if (list) {
             list.innerHTML = "";
@@ -602,10 +607,10 @@ async function loadKnowledgeBases() {
                     item.className = "list-item";
                     item.innerHTML = `
                         <div class="list-content">
-                            <div class="list-title">ID: ${kb.id || 'N/A'}</div>
-                            <div class="list-meta">Name: ${kb.name || 'N/A'}</div>
+                            <div class="list-title">${kb.name || 'N/A'}</div>
                         </div>
                         <div class="list-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="addResourceToKb('${kb.id}')"><i class="fas fa-file-plus"></i></button>
                             <button class="btn btn-danger btn-sm" onclick="deleteKnowledgeBase('${kb.id}')">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -617,7 +622,7 @@ async function loadKnowledgeBases() {
                 list.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-database"></i>
-                        <p>Базы знаний не найдены</p>
+                        <p>No knowledge bases found</p>
                     </div>
                 `;
             }
@@ -639,11 +644,85 @@ async function loadKnowledgeBases() {
     }
 }
 
+// Load KBs and render with collapsible resources
+async function loadKnowledgeBasesWithResources() {
+    try {
+        const [kbRes, resRes] = await Promise.all([
+            apiCall("/knowledge-bases", "GET"),
+            apiCall("/resources", "GET")
+        ]);
+        const kbs = kbRes.knowledge_bases || [];
+        const grouped = resRes.knowledge_bases || [];
+        const kbIdToResources = new Map();
+        grouped.forEach(kb => {
+            kbIdToResources.set(kb.knowledge_base_id || kb.id, kb.resources || kb.resource_info || []);
+        });
+
+        const list = document.getElementById("knowledge-bases-list");
+        if (!list) return;
+        list.innerHTML = "";
+        if (!kbs.length) {
+            list.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-database"></i>
+                    <p>No knowledge bases found</p>
+                </div>
+            `;
+            return;
+        }
+
+        kbs.forEach(kb => {
+            const kbId = kb.knowledge_base_id || kb.id;
+            const resources = kbIdToResources.get(kbId) || [];
+            const wrapper = document.createElement('div');
+            wrapper.className = 'card';
+            wrapper.innerHTML = `
+                <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:12px;cursor:pointer;" onclick="this.parentElement.parentElement.querySelector('.kb-resources').classList.toggle('hidden')">
+                        <div class="card-title"><i class="fas fa-database"></i> ${kb.name}</div>
+                        <div style="color:var(--text-muted);font-size:12px;">${resources.length} resources</div>
+                    </div>
+                    <div class="list-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="addResourceToKb('${kbId}')"><i class="fas fa-file-plus"></i> Add Resource</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteKnowledgeBase('${kbId}')"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+                <div class="card-body kb-resources hidden">
+                    ${resources.length ? resources.map(r => {
+                        const rId = r.resource_id || r.id || 'N/A';
+                        const rType = r.resource_type || r.type || 'N/A';
+                        const kbIdStr = r.knowledge_base_id || kbId;
+                        return `
+                            <div class="list-item">
+                                <div class="list-content">
+                                    <div class="list-title">Resource: ${rType}</div>
+                                    <div class="list-meta">Type: ${rType} | KB: ${kbIdStr}</div>
+                                </div>
+                                <div class="list-actions">
+                                    <button class="btn btn-danger btn-sm" onclick="deleteResource('${rId}')"><i class=\"fas fa-trash\"></i></button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('') : `
+                        <div class="empty-state">
+                            <i class="fas fa-file-alt"></i>
+                            <p>No resources in this knowledge base</p>
+                        </div>
+                    `}
+                </div>
+            `;
+            list.appendChild(wrapper);
+        });
+    } catch (e) {
+        console.error('Error loading KBs with resources:', e);
+    }
+}
+
 async function deleteKnowledgeBase(id) {
     try {
         await apiCall(`/knowledge-bases/${id}`, "DELETE");
         showMessage("Knowledge base deleted", "success");
-        await loadKnowledgeBases();
+        await loadKnowledgeBasesWithResources();
     } catch (e) {
         showMessage(`Error удаления: ${e.message}`, "error");
     }
@@ -651,24 +730,89 @@ async function deleteKnowledgeBase(id) {
 
 /* ========================= Resources ========================= */
 async function createResource() {
-    const kbId = document.getElementById("resource-kb")?.value;
-    const type = document.getElementById("resource-type")?.value;
-    const fileType = document.getElementById("file-type")?.value;
+    const kbId = document.getElementById("resource-kb-select")?.value;
+    const type = selectedResourceType; // Specific type e.g. STATIC_FILE
+    const category = selectedResourceCategory; // 'vectorized' | 'realtime'
 
     if (!kbId) return showMessage("Please select a knowledge base", "error");
     if (!type) return showMessage("Please select resource type", "error");
 
+    // Build payload according to source_management API
+    const payload = { knowledge_base_id: kbId };
+    if (category === 'vectorized') {
+        payload.resource_type = 'VECTORIZED';
+        payload.vectorized_resource_type = type;
+        if (type === 'STATIC_FILE') {
+            const fileType = document.getElementById('file-type')?.value || null;
+            payload.file_type = fileType;
+        } else if (type === 'SLACK_CHANNEL') {
+            const channelId = document.getElementById('slack-channel')?.value?.trim();
+            if (!channelId) return showMessage('Please provide Slack channel', 'error');
+            payload.channel_id = channelId;
+            // messages optional: skip in UI
+        } else if (type === 'DATABASE') {
+            const host = document.getElementById('db-host')?.value?.trim();
+            const port = document.getElementById('db-port')?.value?.trim();
+            const database = document.getElementById('db-name')?.value?.trim();
+            const user = document.getElementById('db-user')?.value?.trim();
+            const password = document.getElementById('db-password')?.value?.trim();
+            const query = document.getElementById('sql-query')?.value?.trim();
+            if (!host || !port || !database || !user || !password || !query) return showMessage('Please fill all DB fields', 'error');
+            payload.connection_params = { host, port, database, user, password };
+            payload.query = query;
+        } else if (type === 'GOOGLE_DRIVE') {
+            const gUrl = document.getElementById('gdrive-folder')?.value?.trim();
+            if (!gUrl) return showMessage('Please provide Google Drive folder URL/ID', 'error');
+            payload.google_drive_url = gUrl;
+        } else if (type === 'DYNAMODB_TABLE') {
+            const table = document.getElementById('dynamo-table')?.value?.trim();
+            if (!table) return showMessage('Please provide DynamoDB table name', 'error');
+            payload.dynamodb_table_name = table;
+        }
+    } else if (category === 'realtime') {
+        payload.resource_type = 'REALTIME';
+        payload.realtime_resource_type = type; // DATABASE | REST_API
+        if (type === 'REST_API') {
+            const url = document.getElementById('api-endpoint')?.value?.trim();
+            const method = document.getElementById('api-method')?.value || 'GET';
+            const headers = document.getElementById('api-headers')?.value?.trim();
+            const payloadBody = document.getElementById('api-payload')?.value?.trim();
+            const queryParams = document.getElementById('api-query-params')?.value?.trim();
+            const placeholders = document.getElementById('api-placeholders')?.value?.trim();
+            if (!url) return showMessage('Please provide API endpoint URL', 'error');
+            payload.url = url;
+            payload.method = method;
+            if (headers) payload.header = safeJsonParse(headers);
+            if (payloadBody) payload.payload = safeJsonParse(payloadBody);
+            if (queryParams) payload.query_params = safeJsonParse(queryParams);
+            if (placeholders) payload.placeholders = safeJsonParse(placeholders);
+        } else if (type === 'DATABASE') {
+            const dbType = document.getElementById('rt-db-type')?.value || 'POSTGRESQL';
+            const host = document.getElementById('rt-db-host')?.value?.trim();
+            const port = document.getElementById('rt-db-port')?.value?.trim();
+            const database = document.getElementById('rt-db-name')?.value?.trim();
+            const user = document.getElementById('rt-db-user')?.value?.trim();
+            const password = document.getElementById('rt-db-password')?.value?.trim();
+            const query = document.getElementById('rt-sql-query')?.value?.trim();
+            if (!host || !port || !database || !user || !password || !query) return showMessage('Please fill all realtime DB fields', 'error');
+            payload.db_type = dbType;
+            payload.connection_params = { host, port, database, user, password };
+            payload.query = query;
+        }
+    }
+
     try {
-        await apiCall("/resources", "POST", {
-            knowledge_base_id: kbId,
-            resource_type: type,
-            file_type: fileType || null
-        });
+        await apiCall("/resources", "POST", payload);
         showMessage("Resource created", "success");
-        await loadResources();
+        closeResourceCreation();
+        await loadKnowledgeBasesWithResources();
     } catch (e) {
         showMessage(`Error создания ресурса: ${e.message}`, "error");
     }
+}
+
+function safeJsonParse(text) {
+    try { return JSON.parse(text); } catch { return undefined; }
 }
 
 async function loadResources() {
@@ -685,8 +829,8 @@ async function loadResources() {
                 item.className = "list-item";
                 item.innerHTML = `
                     <div class="list-content">
-                        <div class="list-title">ID: ${r.id || 'N/A'}</div>
-                        <div class="list-meta">Type: ${r.resource_type || 'N/A'} | KB ID: ${r.knowledge_base_id || 'N/A'}</div>
+                        <div class="list-title">Resource: ${r.resource_type || 'N/A'}</div>
+                        <div class="list-meta">Type: ${r.resource_type || 'N/A'}</div>
                     </div>
                     <div class="list-actions">
                         <button class="btn btn-danger btn-sm" onclick="deleteResource('${r.id}')">
@@ -717,6 +861,225 @@ async function deleteResource(id) {
     } catch (e) {
         showMessage(`Error удаления: ${e.message}`, "error");
     }
+}
+
+/* ========================= Resource Creation Overlay ========================= */
+function showResourceCreation() {
+    try {
+        const overlay = document.getElementById('resource-creation-page');
+        if (overlay) overlay.classList.remove('hidden');
+        selectedResourceCategory = 'vectorized';
+        selectedResourceType = null;
+        const vectorBlock = document.getElementById('vectorized-resources');
+        const realtimeBlock = document.getElementById('realtime-resources');
+        if (vectorBlock && realtimeBlock) {
+            vectorBlock.classList.remove('hidden');
+            realtimeBlock.classList.add('hidden');
+        }
+        const formContainer = document.getElementById('resource-form-container');
+        const formFields = document.getElementById('resource-form-fields');
+        if (formContainer && formFields) {
+            formContainer.classList.add('hidden');
+            formFields.innerHTML = '';
+        }
+        // Populate KBs and preselect if needed
+        loadKnowledgeBases().then(() => {
+            if (presetKnowledgeBaseId) {
+                const select = document.getElementById('resource-kb-select');
+                if (select) select.value = presetKnowledgeBaseId;
+            }
+        });
+    } catch (e) {
+        console.error('showResourceCreation error:', e);
+    }
+}
+
+function closeResourceCreation() {
+    const overlay = document.getElementById('resource-creation-page');
+    if (overlay) overlay.classList.add('hidden');
+    const formContainer = document.getElementById('resource-form-container');
+    const formFields = document.getElementById('resource-form-fields');
+    if (formContainer && formFields) {
+        formContainer.classList.add('hidden');
+        formFields.innerHTML = '';
+    }
+    selectedResourceType = null;
+    presetKnowledgeBaseId = null;
+}
+
+function showKbCreation() {
+    const overlay = document.getElementById('kb-creation-page');
+    if (overlay) overlay.classList.remove('hidden');
+}
+
+function closeKbCreation() {
+    const overlay = document.getElementById('kb-creation-page');
+    if (overlay) overlay.classList.add('hidden');
+}
+
+function addResourceToKb(kbId) {
+    presetKnowledgeBaseId = kbId;
+    showResourceCreation();
+}
+
+function switchResourceCategory(category, el) {
+    selectedResourceCategory = category;
+    // Toggle tabs active
+    const tabs = el?.parentElement?.querySelectorAll('.tab');
+    if (tabs) {
+        tabs.forEach(t => t.classList.remove('active'));
+        el.classList.add('active');
+    }
+    // Toggle blocks
+    const vectorBlock = document.getElementById('vectorized-resources');
+    const realtimeBlock = document.getElementById('realtime-resources');
+    if (category === 'vectorized') {
+        vectorBlock?.classList.remove('hidden');
+        realtimeBlock?.classList.add('hidden');
+    } else {
+        vectorBlock?.classList.add('hidden');
+        realtimeBlock?.classList.remove('hidden');
+    }
+    // Reset form when switching
+    const formContainer = document.getElementById('resource-form-container');
+    const formFields = document.getElementById('resource-form-fields');
+    if (formContainer && formFields) {
+        formContainer.classList.add('hidden');
+        formFields.innerHTML = '';
+    }
+    selectedResourceType = null;
+}
+
+function selectResourceType(type, category) {
+    selectedResourceType = type;
+    selectedResourceCategory = category;
+    renderResourceForm(type, category);
+}
+
+function renderResourceForm(type, category) {
+    const formContainer = document.getElementById('resource-form-container');
+    const formFields = document.getElementById('resource-form-fields');
+    if (!formContainer || !formFields) return;
+
+    let html = '';
+    // Common hint
+    html += '<div class="content-subtitle" style="margin-bottom:12px;">Fill required fields for the selected resource</div>';
+
+    if (category === 'vectorized') {
+        if (type === 'STATIC_FILE') {
+            html += `
+                <div class="form-group">
+                    <label class="form-label">File Type</label>
+                    <select id="file-type" class="form-input">
+                        <option value="PDF">PDF</option>
+                        <option value="TEXT">Text</option>
+                        <option value="WORD">Word</option>
+                    </select>
+                </div>
+            `;
+        } else if (type === 'SLACK_CHANNEL') {
+            html += `
+                <div class="form-group">
+                    <label class="form-label">Slack Channel (name or ID)</label>
+                    <input id="slack-channel" class="form-input" placeholder="#general or C01234567" />
+                </div>
+            `;
+        } else if (type === 'DATABASE') {
+            html += `
+                <div class="controls-grid">
+                    <div class="controls-row">
+                        <input id="db-host" class="form-input" placeholder="Host" />
+                        <input id="db-port" class="form-input" placeholder="Port" />
+                    </div>
+                    <div class="controls-row">
+                        <input id="db-name" class="form-input" placeholder="Database" />
+                        <input id="db-user" class="form-input" placeholder="User" />
+                        <input id="db-password" class="form-input" placeholder="Password" type="password" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">SQL Query</label>
+                        <textarea id="sql-query" class="form-input" rows="3" placeholder="SELECT * FROM ..."></textarea>
+                    </div>
+                </div>
+            `;
+        } else if (type === 'GOOGLE_DRIVE') {
+            html += `
+                <div class="form-group">
+                    <label class="form-label">Google Drive Folder URL/ID</label>
+                    <input id="gdrive-folder" class="form-input" placeholder="URL or Folder ID" />
+                </div>
+            `;
+        } else if (type === 'DYNAMODB') {
+            html += `
+                <div class="form-group">
+                    <label class="form-label">Table Name</label>
+                    <input id="dynamo-table" class="form-input" placeholder="Table name" />
+                </div>
+            `;
+        }
+    } else if (category === 'realtime') {
+        if (type === 'REST_API') {
+            html += `
+                <div class="controls-grid">
+                    <div class="form-group">
+                        <label class="form-label">Endpoint URL</label>
+                        <input id="api-endpoint" class="form-input" placeholder="https://api.example.com/data" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Method</label>
+                        <select id="api-method" class="form-input">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Headers (JSON)</label>
+                        <textarea id="api-headers" class="form-input" rows="2" placeholder='{"Authorization":"Bearer ..."}'></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Payload (JSON)</label>
+                        <textarea id="api-payload" class="form-input" rows="3" placeholder='{"key":"value"}'></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Query Params (JSON)</label>
+                        <textarea id="api-query-params" class="form-input" rows="2" placeholder='{"page":"1"}'></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Placeholders (JSON)</label>
+                        <textarea id="api-placeholders" class="form-input" rows="2" placeholder='{"{id}":"123"}'></textarea>
+                    </div>
+                </div>
+            `;
+        } else if (type === 'DATABASE') {
+            html += `
+                <div class="controls-grid">
+                    <div class="form-group">
+                        <label class="form-label">DB Type</label>
+                        <select id="rt-db-type" class="form-input">
+                            <option value="POSTGRESQL">PostgreSQL</option>
+                            <option value="MYSQL">MySQL</option>
+                        </select>
+                    </div>
+                    <div class="controls-row">
+                        <input id="rt-db-host" class="form-input" placeholder="Host" />
+                        <input id="rt-db-port" class="form-input" placeholder="Port" />
+                    </div>
+                    <div class="controls-row">
+                        <input id="rt-db-name" class="form-input" placeholder="Database" />
+                        <input id="rt-db-user" class="form-input" placeholder="User" />
+                        <input id="rt-db-password" class="form-input" placeholder="Password" type="password" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">SQL Query</label>
+                        <textarea id="rt-sql-query" class="form-input" rows="3" placeholder="SELECT * FROM ..."></textarea>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    formFields.innerHTML = html;
+    formContainer.classList.remove('hidden');
 }
 
 /* ========================= Chatbots ========================= */
@@ -761,7 +1124,6 @@ async function loadChatbots() {
                     item.className = "list-item";
                     item.innerHTML = `
                         <div class="list-content">
-                            <div class="list-title">ID: ${cb.id || 'N/A'}</div>
                             <div class="list-meta">Name: ${cb.name || 'N/A'} | Model: ${cb.model || 'N/A'}</div>
                         </div>
                         <div class="list-actions">
@@ -836,7 +1198,6 @@ async function loadConversations() {
                 item.className = "list-item";
                 item.innerHTML = `
                     <div class="list-content">
-                        <div class="list-title">ID: ${conv.id || 'N/A'}</div>
                         <div class="list-meta">Chatbot ID: ${conv.chatbot_id || 'N/A'}</div>
                     </div>
                     <div class="list-actions">

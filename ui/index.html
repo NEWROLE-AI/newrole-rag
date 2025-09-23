@@ -77,6 +77,7 @@
             display: flex;
             flex-direction: column;
             padding: 0;
+            height: 100vh;
         }
 
         .sidebar-header {
@@ -98,10 +99,82 @@
             color: var(--primary);
         }
 
-        /* Navigation */
+        /* New Chat Button */
+        .new-chat-btn {
+            margin: 16px;
+            padding: 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .new-chat-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-hover);
+        }
+
+        /* Chat History Section */
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 16px 16px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .chat-history-header {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 8px 0;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .chat-history-item {
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .chat-history-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .chat-history-item.active {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .chat-history-item i {
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        /* Navigation Section */
         .nav-section {
             padding: 8px;
-            flex: 1;
+            border-top: 1px solid var(--border);
         }
 
         .nav-item {
@@ -135,6 +208,7 @@
         .user-section {
             padding: 16px;
             border-top: 1px solid var(--border);
+            background: var(--bg-sidebar);
         }
 
         .user-info {
@@ -310,6 +384,45 @@
             color: var(--text-muted);
         }
 
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            padding: 0 20px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            position: relative;
+            transition: color 0.2s ease;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            color: var(--text-primary);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--primary);
+        }
+
         /* Error Messages */
         .error-message {
             background: rgba(239, 68, 68, 0.1);
@@ -408,6 +521,15 @@
             padding: 8px 16px;
             font-size: 12px;
             width: auto;
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #dc2626;
         }
 
         /* Loading Indicator */
@@ -538,6 +660,11 @@
             color: var(--text-muted);
         }
 
+        .list-actions {
+            display: flex;
+            gap: 8px;
+        }
+
         /* Chat Interface */
         .chat-container {
             display: flex;
@@ -652,6 +779,79 @@
             border-color: rgba(59, 130, 246, 0.3);
         }
 
+        /* Resource Creation Overlay */
+        .resource-creation-page {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1100;
+        }
+        .resource-creation-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            width: min(900px, 92vw);
+            max-height: 90vh;
+            overflow-y: auto;
+                padding: 20px;
+            box-shadow: var(--shadow-lg);
+        }
+        .resource-creation-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-sidebar);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            margin-bottom: 16px;
+        }
+        .resource-type-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+        .resource-type-card {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            cursor: pointer;
+            transition: border-color .2s ease, background .2s ease;
+            text-align: left;
+        }
+        .resource-type-card:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-hover);
+        }
+        .resource-form {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-sidebar);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-hover);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .sidebar {
@@ -675,126 +875,6 @@
                 padding: 24px;
             }
         }
-
-
-        /* Toast */
-        .toast {
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            padding: 16px 20px;
-            border-radius: var(--radius);
-            color: white;
-            font-weight: 500;
-            box-shadow: var(--shadow-lg);
-            opacity: 0;
-            transform: translateX(100%);
-            transition: all 0.3s ease;
-            z-index: 1000;
-            max-width: 400px;
-        }
-
-        .toast.show {
-            opacity: 1;
-            transform: translateX(0);
-        }
-
-        .toast.success {
-            background: var(--success);
-        }
-
-        .toast.error {
-            background: var(--error);
-        }
-
-        /* Status Indicator */
-        .status-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 8px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .status-online {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .app-container {
-                padding: 12px;
-            }
-
-            .content {
-                padding: 20px;
-            }
-
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
-
-            .controls-row {
-                grid-template-columns: 1fr;
-            }
-
-            .chat-input-row {
-                flex-direction: column;
-                gap: 8px;
-            }
-
-            .btn {
-                width: 100%;
-            }
-
-            .list-item {
-                flex-direction: column;
-                gap: 12px;
-                align-items: stretch;
-            }
-
-            .list-actions {
-                justify-content: flex-end;
-            }
-        }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 3px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        /* Loading Animation */
-        .loading {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid transparent;
-            border-top: 2px solid currentColor;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
     </style>
 </head>
 <body>
@@ -808,7 +888,7 @@
                 <h1 class="auth-title">Welcome to Ragnarök</h1>
                 <p class="auth-subtitle">Choose how you'd like to get started</p>
             </div>
-            
+
             <div class="auth-choice">
                 <div class="auth-option" onclick="showLoginScreen()">
                     <i class="fas fa-sign-in-alt" style="color: var(--primary);"></i>
@@ -840,7 +920,7 @@
 
     <!-- Login Screen -->
     <div id="login-screen" class="auth-container hidden">
-        <div class="auth-card">
+                    <div class="auth-card">
             <div class="auth-header">
                 <button class="back-btn" onclick="showAuthChoice()">
                     <i class="fas fa-arrow-left"></i> Back
@@ -858,22 +938,22 @@
             </div>
             
             <form onsubmit="handleLogin(event)">
-                <div class="form-group">
-                    <label class="form-label">Email</label>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
                     <input type="email" id="login-email" class="form-input" placeholder="Enter your email" required>
-                </div>
-                
-                <div class="form-group">
+                        </div>
+
+                        <div class="form-group">
                     <label class="form-label">Password</label>
                     <input type="password" id="login-password" class="form-input" placeholder="Enter your password" required>
-                </div>
-                
+                        </div>
+
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary" id="login-btn">
                         <span id="login-btn-text">Sign In</span>
                         <div class="loading hidden" id="login-loading"></div>
-                    </button>
-                </div>
+                            </button>
+                        </div>
             </form>
             
             <div class="divider">or</div>
@@ -882,8 +962,8 @@
                 <i class="fab fa-google"></i>
                 Continue with Google
             </button>
-        </div>
-    </div>
+                    </div>
+                </div>
 
     <!-- Register Screen -->
     <div id="register-screen" class="auth-container hidden">
@@ -894,26 +974,26 @@
                 </button>
                 <div class="auth-logo">
                     <i class="fas fa-hammer-war"></i>
-                </div>
+                        </div>
                 <h1 class="auth-title">Create Account</h1>
                 <p class="auth-subtitle">Join Ragnarök today</p>
-            </div>
+                    </div>
             
             <div id="register-error" class="error-message hidden">
                 <i class="fas fa-exclamation-triangle"></i>
                 <span id="register-error-text"></span>
-            </div>
-            
+                </div>
+
             <form onsubmit="handleRegister(event)">
                 <div class="form-group">
                     <label class="form-label">Email</label>
                     <input type="email" id="register-email" class="form-input" placeholder="Enter your email" required>
-                </div>
+                            </div>
                 
-                <div class="form-group">
+                                    <div class="form-group">
                     <label class="form-label">Password</label>
                     <input type="password" id="register-password" class="form-input" placeholder="Choose a password (min 6 characters)" required minlength="6">
-                </div>
+                                    </div>
                 
                 <div class="form-group">
                     <label class="form-label">Confirm Password</label>
@@ -924,11 +1004,11 @@
                     <button type="submit" class="btn btn-primary" id="register-btn">
                         <span id="register-btn-text">Create Account</span>
                         <div class="loading hidden" id="register-loading"></div>
-                    </button>
-                </div>
+                                            </button>
+                                        </div>
             </form>
-        </div>
-    </div>
+                                    </div>
+                                </div>
 
     <!-- Main App Layout -->
     <div id="main-app" class="app-layout hidden">
@@ -939,62 +1019,63 @@
                 <div class="logo">
                     <i class="fas fa-hammer-war"></i>
                     Ragnarök
-                </div>
-            </div>
+                                    </div>
+                                </div>
             
+            <!-- New Chat Button -->
+            <button class="new-chat-btn" onclick="newConversation()">
+                <i class="fas fa-plus"></i>
+                New Chat
+            </button>
+            
+            <!-- Chat History -->
+            <div class="chat-history">
+                <div class="chat-history-header">Recent Chats</div>
+                <div id="chat-history-list">
+                    <!-- Chat history items will be loaded here -->
+                            </div>
+                        </div>
+
+            <!-- Navigation Section -->
             <div class="nav-section">
-                <div class="nav-item active" onclick="showContent('chat', this)">
-                    <i class="fas fa-comments"></i>
-                    <span>Chat</span>
-                </div>
-                
-                <div class="nav-item" onclick="showContent('bots', this)">
+                <div class="nav-item active" onclick="showContent('assistants', this)">
                     <i class="fas fa-robot"></i>
-                    <span>Chatbots</span>
-                </div>
-                
-                <div class="nav-item" onclick="showContent('prompts', this)">
-                    <i class="fas fa-magic"></i>
-                    <span>Prompts</span>
-                </div>
+                    <span>AI Assistants</span>
+                            </div>
                 
                 <div class="nav-item" onclick="showContent('knowledge', this)">
                     <i class="fas fa-database"></i>
                     <span>Knowledge Bases</span>
-                </div>
-                
-                <div class="nav-item" onclick="showContent('resources', this)">
-                    <i class="fas fa-file-alt"></i>
-                    <span>Resources</span>
-                </div>
-            </div>
+                                        </div>
+                                    </div>
             
+            <!-- User Section (Pinned at bottom) -->
             <div class="user-section">
                 <div class="user-info" onclick="toggleUserMenu()">
                     <div class="user-avatar" id="user-avatar">U</div>
                     <div class="user-details">
                         <div class="user-name" id="user-name">User</div>
                         <div class="user-email" id="user-email-display"></div>
-                    </div>
+                                </div>
                     <i class="fas fa-ellipsis-v" style="color: var(--text-muted);"></i>
-                </div>
+                                    </div>
                 
                 <div id="user-menu" class="hidden" style="margin-top: 8px;">
                     <button class="btn btn-secondary btn-sm" onclick="logout()" style="width: 100%;">
                         <i class="fas fa-sign-out-alt"></i> Sign Out
                     </button>
-                </div>
-            </div>
-        </div>
+                                </div>
+                            </div>
+                        </div>
 
         <!-- Main Content -->
         <div class="main-content">
-            <!-- Chat Content -->
+            <!-- Chat Content (Default view when clicking New Chat or chat history) -->
             <div id="chat-content" class="content-section">
                 <div class="content-header">
                     <h2 class="content-title">Chat</h2>
                     <p class="content-subtitle">Conversation with AI</p>
-                </div>
+                            </div>
                 <div class="content-body">
                     <div class="chat-container">
                         <div class="chat-messages" id="chat-messages">
@@ -1004,196 +1085,260 @@
                             </div>
                         </div>
                         <div class="chat-input-area">
+                            <div class="controls-row" style="margin-bottom: 12px;">
+                                <select id="chat-chatbot" class="form-input">
+                                    <option value="">Select a chatbot</option>
+                                        </select>
+                                    </div>
                             <div class="chat-input-container">
                                 <textarea id="chat-input" class="form-input chat-input" placeholder="Type your message..." rows="2"></textarea>
                                 <button class="btn btn-primary btn-sm" onclick="sendMessage()">
                                     <i class="fas fa-paper-plane"></i>
-                                </button>
+                                    </button>
+                                </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Chatbots Content -->
-            <div id="bots-content" class="content-section hidden">
+            <!-- Combined AI Assistants Content (Chatbots & Prompts) -->
+            <div id="assistants-content" class="content-section hidden">
                 <div class="content-header">
-                    <h2 class="content-title">Chatbots</h2>
-                    <p class="content-subtitle">Manage your AI assistants</p>
+                    <h2 class="content-title">AI Assistants</h2>
+                    <p class="content-subtitle">Manage chatbots and prompt templates</p>
                 </div>
+                
+                <!-- Tabs for switching between Chatbots and Prompts -->
+                <div class="tabs">
+                    <button class="tab active" onclick="switchAssistantsTab('chatbots', this)">Chatbots</button>
+                    <button class="tab" onclick="switchAssistantsTab('prompts', this)">Prompts</button>
+                </div>
+                
                 <div class="content-body">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">
-                                <i class="fas fa-plus"></i>
-                                Create New Chatbot
-                            </h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="controls-grid">
-                                <div class="form-group">
-                                    <label class="form-label">Name</label>
-                                    <input type="text" id="chatbot-name" class="form-input" placeholder="Chatbot name">
-                                </div>
-                                <div class="controls-row">
+                    <!-- Chatbots Tab Content -->
+                    <div id="chatbots-tab" class="tab-content">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <i class="fas fa-plus"></i>
+                                    Create New Chatbot
+                                </h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="controls-grid">
                                     <div class="form-group">
-                                        <label class="form-label">Model</label>
+                                        <label class="form-label">Name</label>
+                                        <input type="text" id="chatbot-name" class="form-input" placeholder="Chatbot name">
+                                    </div>
+                                    <div class="controls-row">
+                                        <div class="form-group">
+                                            <label class="form-label">Model</label>
                                         <select id="chatbot-model" class="form-input">
                                             <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                                             <option value="gpt-4">GPT-4</option>
                                             <option value="claude-3-sonnet">Claude 3 Sonnet</option>
                                         </select>
                                     </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Temperature</label>
+                                            <input type="number" id="temperature" class="form-input" placeholder="0.7" min="0" max="2" step="0.1" value="0.7">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Max Tokens</label>
+                                            <input type="number" id="max-tokens" class="form-input" placeholder="1000" value="1000">
+                                        </div>
+                                    </div>
                                     <div class="form-group">
-                                        <label class="form-label">Temperature</label>
-                                        <input type="number" id="temperature" class="form-input" placeholder="0.7" min="0" max="2" step="0.1" value="0.7">
+                                        <label class="form-label">System Prompt</label>
+                                        <textarea id="system-prompt" class="form-input" rows="3" placeholder="System prompt..."></textarea>
+                                    </div>
+                                    <button class="btn btn-primary" onclick="createChatbot()">
+                                        <i class="fas fa-plus"></i> Create Chatbot
+                                        </button>
                                     </div>
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">System Prompt</label>
-                                    <textarea id="system-prompt" class="form-input" rows="3" placeholder="System prompt..."></textarea>
+                        </div>
+                        
+                        <div style="margin-top: 20px;">
+                            <div id="chatbots-list">
+                                    <div class="empty-state">
+                                        <i class="fas fa-robot"></i>
+                                    <p>No chatbots found</p>
+                                    </div>
                                 </div>
-                                <button class="btn btn-primary" onclick="createChatbot()">
-                                    <i class="fas fa-plus"></i> Create Chatbot
-                                </button>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div style="margin-top: 20px;">
-                        <div id="chatbots-list">
-                            <div class="empty-state">
-                                <i class="fas fa-robot"></i>
-                                <p>No chatbots found</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Prompts Content -->
-            <div id="prompts-content" class="content-section hidden">
-                <div class="content-header">
-                    <h2 class="content-title">Prompts</h2>
-                    <p class="content-subtitle">Manage your prompt templates</p>
-                </div>
-                <div class="content-body">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">
-                                <i class="fas fa-plus"></i>
-                                Create New Prompt
-                            </h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="form-group">
-                                <label class="form-label">Prompt Text</label>
-                                <textarea id="prompt-text" class="form-input" rows="4" placeholder="Enter your prompt..."></textarea>
+                    <!-- Prompts Tab Content -->
+                    <div id="prompts-tab" class="tab-content hidden">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <i class="fas fa-plus"></i>
+                                    Create New Prompt
+                                </h3>
                             </div>
-                            <button class="btn btn-primary" onclick="createPrompt()">
-                                <i class="fas fa-plus"></i> Create Prompt
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div style="margin-top: 20px;">
-                        <div id="prompts-list">
-                            <div class="empty-state">
-                                <i class="fas fa-magic"></i>
-                                <p>No prompts found</p>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label class="form-label">Prompt Text</label>
+                                    <textarea id="prompt-text" class="form-input" rows="4" placeholder="Enter your prompt..."></textarea>
+                                </div>
+                                <button class="btn btn-primary" onclick="createPrompt()">
+                                    <i class="fas fa-plus"></i> Create Prompt
+                                            </button>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
+                        
+                        <div style="margin-top: 20px;">
+                            <div id="prompts-list">
+                                <div class="empty-state">
+                                    <i class="fas fa-magic"></i>
+                                    <p>No prompts found</p>
+                                </div>
+                            </div>
+                        </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-            <!-- Knowledge Bases Content -->
+            <!-- Combined Knowledge & Resources Content -->
             <div id="knowledge-content" class="content-section hidden">
                 <div class="content-header">
                     <h2 class="content-title">Knowledge Bases</h2>
-                    <p class="content-subtitle">Manage your knowledge repositories</p>
+                    <p class="content-subtitle">Manage knowledge bases and their resources</p>
                 </div>
+                
                 <div class="content-body">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">
-                                <i class="fas fa-plus"></i>
-                                Create Knowledge Base
-                            </h3>
+                    <!-- Knowledge controls -->
+                    <div class="tabs" style="display:flex;align-items:center;justify-content:space-between;">
+                        <div>
+                            <button class="tab active" onclick="switchKnowledgeTab('bases', this)">Bases</button>
+                            <button class="tab" onclick="switchKnowledgeTab('resources', this)">Resources</button>
                         </div>
-                        <div class="card-body">
-                            <div class="form-group">
-                                <label class="form-label">Name</label>
-                                <input type="text" id="kb-name" class="form-input" placeholder="Knowledge base name">
-                            </div>
-                            <button class="btn btn-primary" onclick="createKnowledgeBase()">
-                                <i class="fas fa-plus"></i> Create Knowledge Base
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <button class="btn btn-secondary btn-sm" onclick="showKbCreation()" style="margin-right:8px;">
+                                <i class="fas fa-database"></i> Create Knowledge Base
                             </button>
-                        </div>
-                    </div>
-                    
-                    <div style="margin-top: 20px;">
-                        <div id="knowledge-bases-list">
-                            <div class="empty-state">
-                                <i class="fas fa-database"></i>
-                                <p>No knowledge bases found</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Resources Content -->
-            <div id="resources-content" class="content-section hidden">
-                <div class="content-header">
-                    <h2 class="content-title">Resources</h2>
-                    <p class="content-subtitle">Manage your data sources</p>
-                </div>
-                <div class="content-body">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">
-                                <i class="fas fa-plus"></i>
-                                Create Resource
-                            </h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="controls-row">
-                                <div class="form-group">
-                                    <label class="form-label">Knowledge Base</label>
-                                    <select id="resource-kb" class="form-input">
-                                        <option value="">Select knowledge base</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Type</label>
-                                    <select id="resource-type" class="form-input">
-                                        <option value="vectorized">Vectorized</option>
-                                        <option value="realtime">Real-time</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">File Type</label>
-                                <select id="file-type" class="form-input">
-                                    <option value="">Select file type</option>
-                                    <option value="pdf">PDF</option>
-                                    <option value="text">Text</option>
-                                    <option value="docx">Word Document</option>
-                                </select>
-                            </div>
-                            <button class="btn btn-primary" onclick="createResource()">
+                            <button class="btn btn-secondary btn-sm" onclick="showResourceCreation()">
                                 <i class="fas fa-plus"></i> Create Resource
                             </button>
                         </div>
                     </div>
-                    
-                    <div style="margin-top: 20px;">
-                        <div id="resources-list">
-                            <div class="empty-state">
-                                <i class="fas fa-file-alt"></i>
-                                <p>No resources found</p>
+
+                    <!-- Bases tab -->
+                    <div id="knowledge-bases-tab" class="tab-content">
+                        <!-- Knowledge Bases List -->
+                        <div style="margin-top: 20px;">
+                            <div id="knowledge-bases-list">
+                                    <div class="empty-state">
+                                    <i class="fas fa-database"></i>
+                                    <p>No knowledge bases found</p>
+                                </div>
                             </div>
+                                    </div>
+                                </div>
+
+                    <!-- Resources tab -->
+                    <div id="resources-tab" class="tab-content hidden" style="margin-top: 20px;">
+                                        <div class="empty-state">
+                            <i class="fas fa-location-arrow"></i>
+                            <p>Use the "Create Resource" button to open the resource creation page</p>
+                                        </div>
+                                    </div>
+                </div>
+            </div>
+            
+            <!-- Resource Creation Page (Overlay) -->
+            <div id="resource-creation-page" class="resource-creation-page hidden">
+                <div class="resource-creation-content">
+                    <div class="resource-creation-header">
+                        <button class="back-btn" onclick="closeResourceCreation()" style="margin-bottom: 0;">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        <h2 class="content-title" style="margin: 0;">Create New Resource</h2>
+                    </div>
+                    <!-- Knowledge Base Selection -->
+                    <div class="card" style="margin-bottom: 24px;">
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="form-label">Select Knowledge Base</label>
+                                <select id="resource-kb-select" class="form-input">
+                                    <option value="">Select a knowledge base</option>
+                                </select>
+                                    </div>
+                                </div>
+                            </div>
+                    
+                    <!-- Resource Type Selection -->
+                    <div class="card" style="margin-bottom: 24px;">
+                        <div class="card-header">
+                            <h3 class="card-title">Select Resource Type</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="tabs">
+                                <button class="tab active" onclick="switchResourceCategory('vectorized', this)">Vectorized</button>
+                                <button class="tab" onclick="switchResourceCategory('realtime', this)">Realtime</button>
+                    </div>
+                            
+                            <!-- Vectorized Resources -->
+                            <div id="vectorized-resources" class="resource-type-selector" style="margin-top: 20px;">
+                                <div class="resource-type-card" onclick="selectResourceType('STATIC_FILE', 'vectorized')">
+                                    <i class="fas fa-file-alt" style="font-size: 24px; margin-bottom: 8px; color: var(--primary);"></i>
+                                    <h4 style="margin-bottom: 4px;">Static File</h4>
+                                    <p style="font-size: 12px; color: var(--text-secondary);">PDF, Text, Word documents</p>
+                </div>
+                                
+                                <div class="resource-type-card" onclick="selectResourceType('SLACK_CHANNEL', 'vectorized')">
+                                    <i class="fab fa-slack" style="font-size: 24px; margin-bottom: 8px; color: var(--primary);"></i>
+                                    <h4 style="margin-bottom: 4px;">Slack Channel</h4>
+                                    <p style="font-size: 12px; color: var(--text-secondary);">Import Slack messages</p>
+            </div>
+                                
+                                <div class="resource-type-card" onclick="selectResourceType('DATABASE', 'vectorized')">
+                                    <i class="fas fa-database" style="font-size: 24px; margin-bottom: 8px; color: var(--primary);"></i>
+                                    <h4 style="margin-bottom: 4px;">Database</h4>
+                                    <p style="font-size: 12px; color: var(--text-secondary);">SQL query for vectorization</p>
+        </div>
+                                
+                                <div class="resource-type-card" onclick="selectResourceType('GOOGLE_DRIVE', 'vectorized')">
+                                    <i class="fab fa-google-drive" style="font-size: 24px; margin-bottom: 8px; color: var(--primary);"></i>
+                                    <h4 style="margin-bottom: 4px;">Google Drive</h4>
+                                    <p style="font-size: 12px; color: var(--text-secondary);">Google Drive folders</p>
+    </div>
+
+                                <div class="resource-type-card" onclick="selectResourceType('DYNAMODB', 'vectorized')">
+                                    <i class="fas fa-server" style="font-size: 24px; margin-bottom: 8px; color: var(--primary);"></i>
+                                    <h4 style="margin-bottom: 4px;">DynamoDB</h4>
+                                    <p style="font-size: 12px; color: var(--text-secondary);">DynamoDB tables</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Realtime Resources -->
+                            <div id="realtime-resources" class="resource-type-selector hidden" style="margin-top: 20px;">
+                                <div class="resource-type-card" onclick="selectResourceType('REST_API', 'realtime')">
+                                    <i class="fas fa-plug" style="font-size: 24px; margin-bottom: 8px; color: var(--primary);"></i>
+                                    <h4 style="margin-bottom: 4px;">REST API</h4>
+                                    <p style="font-size: 12px; color: var(--text-secondary);">External API endpoints</p>
+                                </div>
+                                
+                                <div class="resource-type-card" onclick="selectResourceType('DATABASE', 'realtime')">
+                                    <i class="fas fa-bolt" style="font-size: 24px; margin-bottom: 8px; color: var(--primary);"></i>
+                                    <h4 style="margin-bottom: 4px;">Live Database</h4>
+                                    <p style="font-size: 12px; color: var(--text-secondary);">Real-time database queries</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dynamic Form Based on Resource Type -->
+                    <div id="resource-form-container" class="hidden">
+                        <div class="resource-form">
+                            <div id="resource-form-fields">
+                                <!-- Fields will be dynamically inserted here -->
+                            </div>
+                            <button class="btn btn-primary" onclick="createResource()" style="margin-top: 20px;">
+                                <i class="fas fa-plus"></i> Create Resource
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1201,7 +1346,241 @@
         </div>
     </div>
 
+    <!-- Knowledge Base Creation Page (Overlay) -->
+    <div id="kb-creation-page" class="resource-creation-page hidden">
+        <div class="resource-creation-content">
+            <div class="resource-creation-header">
+                <button class="back-btn" onclick="closeKbCreation()" style="margin-bottom: 0;">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <h2 class="content-title" style="margin: 0;">Create Knowledge Base</h2>
+            </div>
+            <div class="card" style="margin-bottom: 16px;">
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">Name</label>
+                        <input type="text" id="kb-name-input" class="form-input" placeholder="Knowledge base name">
+                    </div>
+                    <button class="btn btn-primary" onclick="createKnowledgeBase()">
+                        <i class="fas fa-plus"></i> Create Knowledge Base
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="config.js"></script>
     <script src="app.js"></script>
+    <script>
+        // Add function to switch between Assistants tabs (Chatbots and Prompts)
+        function switchAssistantsTab(tabName, element) {
+            // Update active tab
+            document.querySelectorAll('#assistants-content .tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            element.classList.add('active');
+            
+            // Show/hide tab content
+            if (tabName === 'chatbots') {
+                document.getElementById('chatbots-tab').classList.remove('hidden');
+                document.getElementById('prompts-tab').classList.add('hidden');
+                loadChatbots();
+            } else if (tabName === 'prompts') {
+                document.getElementById('chatbots-tab').classList.add('hidden');
+                document.getElementById('prompts-tab').classList.remove('hidden');
+                loadPrompts();
+            }
+        }
+        
+        // Add function to switch between Knowledge tabs
+        function switchKnowledgeTab(tabName, element) {
+            // Update active tab
+            document.querySelectorAll('#knowledge-content .tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            element.classList.add('active');
+            
+            // Show/hide tab content
+            if (tabName === 'bases') {
+                document.getElementById('knowledge-bases-tab').classList.remove('hidden');
+                document.getElementById('resources-tab').classList.add('hidden');
+                loadKnowledgeBasesWithResources();
+            } else if (tabName === 'resources') {
+                document.getElementById('knowledge-bases-tab').classList.add('hidden');
+                document.getElementById('resources-tab').classList.remove('hidden');
+                // Resources tab now just informs to use "Create Resource" button
+            }
+        }
+        
+        // Add function to load chat history
+        async function loadChatHistory() {
+            try {
+                const result = await apiCall("/conversations", "GET");
+                const conversations = result.conversations || result || [];
+                const historyList = document.getElementById("chat-history-list");
+                
+                if (!historyList) return;
+                
+                historyList.innerHTML = "";
+                if (Array.isArray(conversations) && conversations.length) {
+                    conversations.slice(0, 10).forEach((conv) => { // Show only recent 10
+                        const item = document.createElement("div");
+                        item.className = "chat-history-item";
+                        item.onclick = () => {
+                            // Show chat content and load messages
+                            showChatContent();
+                            loadMessages(conv.id);
+                            // Set active state
+                            document.querySelectorAll('.chat-history-item').forEach(i => {
+                                i.classList.remove('active');
+                            });
+                            item.classList.add('active');
+                        };
+                        
+                        // Create a display title
+                        const title = conv.title || `Chat ${conv.id.slice(0, 8)}...`;
+                        
+                        item.innerHTML = `
+                            <i class="fas fa-message"></i>
+                            <span>${title}</span>
+                        `;
+                        historyList.appendChild(item);
+                    });
+                } else {
+                    historyList.innerHTML = `
+                        <div style="text-align: center; color: var(--text-muted); padding: 20px; font-size: 13px;">
+                            No chat history
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error('Error loading chat history:', e);
+            }
+        }
+        
+        // Function to show chat content
+        function showChatContent() {
+            // Hide all content sections
+            document.querySelectorAll('.content-section').forEach(contentSection => {
+                contentSection.classList.add('hidden');
+            });
+            
+            // Show chat content
+            document.getElementById('chat-content').classList.remove('hidden');
+            
+            // Remove active state from nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Load chatbots for the dropdown
+            loadChatbots();
+        }
+
+        // Override the original showContent function
+        function showContent(section, clickedElement = null) {
+            console.log('Showing content section:', section);
+            
+            // Update nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // If clicked element provided, make it active
+            if (clickedElement) {
+                clickedElement.classList.add('active');
+            } else {
+                // Find nav item by section name
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    const span = item.querySelector('span');
+                    if (span) {
+                        const text = span.textContent.toLowerCase();
+                        if ((section === 'assistants' && text.includes('assistant')) ||
+                            (section === 'knowledge' && text.includes('knowledge'))) {
+                            item.classList.add('active');
+                        }
+                    }
+                });
+            }
+            
+            // Hide all content sections
+            document.querySelectorAll('.content-section').forEach(contentSection => {
+                contentSection.classList.add('hidden');
+            });
+            
+            // Show selected section
+            const contentSection = document.getElementById(`${section}-content`);
+            if (contentSection) {
+                contentSection.classList.remove('hidden');
+                currentSection = section;
+                
+                // Load data for the section
+                try {
+                    switch(section) {
+                        case 'assistants':
+                            // Default to Chatbots tab
+                            document.getElementById('chatbots-tab').classList.remove('hidden');
+                            document.getElementById('prompts-tab').classList.add('hidden');
+                            document.querySelectorAll('#assistants-content .tab').forEach(tab => {
+                                tab.classList.remove('active');
+                            });
+                            document.querySelector('#assistants-content .tab').classList.add('active');
+                            loadChatbots();
+                            break;
+                        case 'knowledge':
+                            // Default to Knowledge Bases tab
+                            document.getElementById('knowledge-bases-tab').classList.remove('hidden');
+                            document.getElementById('resources-tab').classList.add('hidden');
+                            document.querySelectorAll('#knowledge-content .tab').forEach(tab => {
+                                tab.classList.remove('active');
+                            });
+                            document.querySelector('#knowledge-content .tab').classList.add('active');
+                            loadKnowledgeBases();
+                            break;
+                    }
+                } catch (error) {
+                    console.error(`Error loading ${section} data:`, error);
+                    showMessage(`Failed to load ${section} data`, "error");
+                }
+            }
+        }
+        
+        // Override newConversation to show chat content
+        async function newConversation() {
+            const chatbotId = document.getElementById("chat-chatbot")?.value;
+            if (!chatbotId) {
+                // If no chatbot selected, just show chat content
+                showChatContent();
+                showMessage("Please select a chatbot to start a conversation", "info");
+                return;
+            }
+
+            try {
+                await apiCall("/conversations", "POST", { chatbot_id: chatbotId });
+                showMessage("New conversation created", "success");
+                showChatContent();
+                await loadChatHistory();
+            } catch (e) {
+                showMessage(`Error creating conversation: ${e.message}`, "error");
+            }
+        }
+
+        // Update conversations list to not show in main area (only in sidebar)
+        async function loadConversations() {
+            // This now primarily updates the chat history in sidebar
+            await loadChatHistory();
+            // Also update the chatbot dropdown
+            await loadChatbots();
+        }
+        
+        // Override handleAuthSuccess to show chat by default
+        const originalHandleAuthSuccess = window.handleAuthSuccess;
+        window.handleAuthSuccess = async function(user) {
+            await originalHandleAuthSuccess(user);
+            // Show chat content instead of using showContent
+            showChatContent();
+            loadChatHistory();
+        };
+    </script>
 </body>
 </html>
