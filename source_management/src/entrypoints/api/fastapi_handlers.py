@@ -1,3 +1,5 @@
+import asyncio
+
 import fastapi
 from dependency_injector.wiring import Closing, Provide, inject
 from starlette import status
@@ -9,6 +11,12 @@ from src.application.command_handlers.create_vectorized_resource import CreateVe
 from src.application.commands.create_knowledge_base import CreateKnowledgeBaseCommand
 from src.application.commands.create_realtime_resource import CreateRealtimeResourceCommand
 from src.application.commands.create_vectorized_resource import CreateVectorizedResourceCommand
+
+from src.application.commands.get_realtime_data import GetRealtimeDataCommand
+from src.application.commands.get_vectorized_data import GetVectorizedDataCommand
+
+from src.application.command_handlers.get_realtime_data import GetRealtimeDataCommandHandler
+from src.application.command_handlers.get_vectorized_data import GetVectorizedDataCommandHandler
 from src.application.exceptions.authentication_exception import AuthenticationException
 from src.application.ports.unit_of_work import UnitOfWork
 from src.entrypoints.api.ioc import FastapiContainer
@@ -276,6 +284,47 @@ async def delete_resource(
         raise HTTPException(status_code=500, detail=str(e))
     
     return {"message": f"Resource {resource_id} deleted successfully"}
+
+
+@router.post("/v1/data", response_model=api_models.GetDataResponse)
+@inject
+async def retrieve_data(
+        request: api_models.GetDataRequest,
+        realtime_data_handler: GetRealtimeDataCommandHandler = Depends(Provide[FastapiContainer.get_realtime_data_service]),
+        vectorized_data_handler: GetVectorizedDataCommandHandler = Depends(
+            Provide[FastapiContainer.get_vectorized_data_service])
+) -> api_models.GetDataResponse:
+    """
+    FastAPI endpoint for retrieving all resources.
+
+    Args:
+        request (GetDataRequest): Request payload
+        realtime_data_handler: Injected handler for realtime data operations
+        vectorized_data_handler: Injected handler for vectorized data operations
+
+    Returns:
+        GetDataResponse: Contains realtime and vectorized responses
+
+    Raises:
+        ValidationError: If request data is invalid
+        HTTPException: For any errors during processing
+    """
+    logger.info(f"Received request for get data: {request}")
+
+    realtime_command = GetRealtimeDataCommand(request.realtime_resources)
+    vectorized_command = GetVectorizedDataCommand(request.vectorization_resources)
+
+    task_list = [
+        realtime_data_handler(realtime_command),
+        vectorized_data_handler(vectorized_command)
+    ]
+
+    result = await asyncio.gather(*task_list)
+
+    return api_models.GetDataResponse(
+        realtime_responses=result[0],
+        vectorize_responses=result[1]
+    )
 
 
 # Initializing dependency container

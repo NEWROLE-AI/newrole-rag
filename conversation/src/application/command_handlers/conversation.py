@@ -94,7 +94,7 @@ class ConversationCommandHandler(BaseCommandHandler):
                 conversation.messages, agent.knowledge_base_id, resource_info
             )
 
-            resource_data = await self._source_management_api_client.get_data(request_body=source_management_query_body, user_id=command.user_id)
+            resource_data = await self._source_management_api_client.get_data(request_body=source_management_query_body)
 
             message = await self._ai_service.generate_response_with_resources(
                 prompt=agent.prompt,

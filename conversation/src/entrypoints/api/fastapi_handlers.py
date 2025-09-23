@@ -137,12 +137,22 @@ async def get_conversations(
 async def get_messages(
     conversation_id: str,
     user_id: str = Header(alias="X-User-ID"),
-) -> dict:
+    unit_of_work: UnitOfWork = Depends(Closing[Provide[FastapiContainer.unit_of_work]]),
+) -> api_models.GetMessagesResponse:
     """Get messages for conversation"""
     logger.info(f"Getting messages for conversation {conversation_id}, user: {user_id}")
-    
-    # For now return empty list - would need to implement repository method
-    return {"messages": []}
+
+    async with unit_of_work as uow:
+        messages = await uow.conversations.get_messages(conversation_id)
+
+    return api_models.GetMessagesResponse(
+        messages=[
+            api_models.GetMessagesResponse.Message(
+                **message.to_dict()
+            )
+            for message in messages
+        ]
+    )
 
 
 # DELETE Endpoints

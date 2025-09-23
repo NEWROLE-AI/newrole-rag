@@ -200,3 +200,27 @@ class MongoConversationRepository(ConversationRepository):
             if result.get("n", 0) == 0:
                 raise ValueError(f"Conversation with id {conversation_id} not found")
             return True
+
+
+    async def get_messages(self, conversation_id: str) -> list[Message]:
+        if hasattr(self._conversations, 'find_one'):
+            document = await self._conversations.find_one(
+                {"conversation_id": conversation_id}
+            )
+        else:
+            document = await self._conversations.find_one(
+                {"conversation_id": conversation_id}
+            )
+
+        if not document:
+            return []
+
+        # Убираем MongoDB _id поле
+        document.pop("_id", None)
+
+        try:
+            # Предполагаем, что Conversation имеет поле messages
+            conversation = Conversation.from_dict(document)
+            return conversation.messages if hasattr(conversation, 'messages') else []
+        except Exception as e:
+            return []

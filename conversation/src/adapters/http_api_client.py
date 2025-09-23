@@ -72,7 +72,7 @@ class HttpSourceManagementApiClient(SourceManagementApiClient):
 
 
     async def get_data(self, request_body: dict) -> dict:
-        url = f"{self._base_url}/api/v1/data/retrieve"
+        url = f"{self._base_url}/api/v1/data"
         logger.info(
             f"HttpSourceManagementApiClient: Get resource data"
         )

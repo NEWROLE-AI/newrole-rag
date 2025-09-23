@@ -117,6 +117,12 @@ class OpenAIService(AIService):
              ][-15:]
         ]
 
+        if formatted_messages:
+            for message in reversed(formatted_messages):
+                if message.get('role') == 'user':
+                    message['content'] += "\n\nRespond with JSON format."
+                    break
+
         return formatted_messages
 
     async def _exponential_backoff(self, attempt: int) -> float:
@@ -403,7 +409,7 @@ class OpenAIService(AIService):
                 try:
                     response_content: str = response.choices[0].message.content
 
-                    return response_content
+                    return json.loads(response_content)["response"]
                 except json.JSONDecodeError:
                     logger.error(f"Failed to parse JSON response: {response}")
                     return ""

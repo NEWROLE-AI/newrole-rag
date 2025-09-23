@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from src.application.models.agent_chat_bot import AgentChatBot
 from src.application.models.vectorized_knowledge import VectorizedKnowledge
-from src.application.models.conversation import Conversation
+from src.application.models.conversation import Conversation, Message
 
 
 class VectorizedKnowledgeRepository(ABC):
@@ -61,6 +61,10 @@ class ConversationRepository(ABC):
 
     @abstractmethod
     async def delete(self, conversation_id: str):
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_messages(self, conversation_id: str) -> list[Message]:
         raise NotImplementedError
 
 

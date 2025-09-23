@@ -386,4 +386,67 @@ elif os.getenv("CONTAINER_TYPE") == "fastapi":
             database_manager=database_manager,
         )
 
+        http_session = providers.Singleton(
+            aiohttp.ClientSession
+        )
+
+        api_service = providers.Singleton(
+            IoHttpRealtimeApiService,
+            session=http_session
+        )
+
+        postgresql_handler = providers.Singleton(
+            PostgresRealtimeDatabaseService
+        )
+
+        mysql_handler = providers.Singleton(
+                MySqlRealtimeDatabaseService
+        )
+
+        db_handlers = providers.Dict({
+            DbType.POSTGRESQL: postgresql_handler,
+            DbType.MYSQL: mysql_handler,
+        })
+
+        get_realtime_data_service = providers.Singleton(
+            GetRealtimeDataCommandHandler,
+            unit_of_work=unit_of_work,
+            api_service=api_service,
+            db_handlers=db_handlers,
+            database_manager=database_manager,
+        )
+
+        vectorize_service = providers.Singleton(
+            HttpVectorizedService,
+            secrets.get("base_url"),
+            session=http_session,
+        )
+
+        elastic_search_client = providers.Singleton(
+            AsyncOpenSearch,
+            hosts=[secrets.get("opensearch_host")],
+            http_auth=(
+                secrets.get("opensearch_username"),
+                secrets.get("opensearch_password"),
+            ),
+            verify_certs=True,
+            timeout=60,
+            max_retries=10,
+            retry_on_timeout=True,
+        )
+
+
+        vectorized_knowledge_service = providers.Singleton(
+            OpensearchVectorizedKnowledgeService,
+            client=elastic_search_client,
+            knn_parameter=25,
+        )
+
+        get_vectorized_data_service = providers.Singleton(
+            GetVectorizedDataCommandHandler,
+            unit_of_work=unit_of_work,
+            vectorize_service=vectorize_service,
+            vectorized_knowledge_service=vectorized_knowledge_service,
+        )
+
         logger.info("Initialized Container complete")

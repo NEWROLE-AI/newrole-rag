@@ -1,3 +1,5 @@
+import datetime
+
 from pydantic import BaseModel
 
 
@@ -55,3 +57,13 @@ class GetConversationResponse(BaseModel):
         agent_chat_bot_id: str
 
     conversation_list: list[Conversation]
+
+
+class GetMessagesResponse(BaseModel):
+    class Message(BaseModel):
+        message_id: str
+        role: str
+        content: str
+        timestamp: datetime.datetime
+
+    messages: list[Message]
