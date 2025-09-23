@@ -91,7 +91,7 @@ class GetAllResourcesResponse(BaseModel):
         knowledge_bases (list[dict]): List of knowledge bases
     """
 
-    knowledge_bases: list[dict]
+    resource_list: list[dict]
 
 
 class GetKnowledgeBasesResponse(BaseModel):

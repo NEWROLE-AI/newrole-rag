@@ -68,4 +68,5 @@ class SqlAgentChatBotRepository(AgentChatBotRepository):
             agent_chat_bot_id=agent_row.agent_chat_bot_id,
             knowledge_base_id=agent_row.knowledge_base_id,
             prompt=Prompt(prompt_id=prompt_row.prompt_id, text=prompt_row.text),
+            user_id=agent_row.user_id
         )

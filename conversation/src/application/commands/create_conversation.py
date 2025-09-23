@@ -13,3 +13,4 @@ class CreateConversationCommand(BaseCommand):
     """
 
     agent_chat_bot_id: str
+    user_id: str

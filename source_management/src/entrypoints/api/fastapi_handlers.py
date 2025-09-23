@@ -148,7 +148,7 @@ async def get_all_resources(
 
     logger.info(f"Received request for get all resources by user_id: {user_id}")
     result = await query_service.get_all_resources([knowledge_base.knowledge_base_id for knowledge_base in knowledge_base_list])
-    response = api_models.GetAllResourcesResponse(knowledge_bases=result)
+    response = api_models.GetAllResourcesResponse(resource_list=result)
     logger.info(f"Returning response with {len(result)} knowledge bases")
     return response
 
@@ -276,18 +276,6 @@ async def delete_resource(
         raise HTTPException(status_code=500, detail=str(e))
     
     return {"message": f"Resource {resource_id} deleted successfully"}
-
-
-# User creation endpoint for API Gateway
-@router.post("/v1/users")
-@inject
-async def create_user(
-    request: dict,
-    user_id: str = Header(alias="X-User-ID"),
-) -> dict:
-    """Create user record in source management"""
-    logger.info(f"Creating user record: {request}")
-    return {"message": "User created in source management", "user_id": user_id}
 
 
 # Initializing dependency container

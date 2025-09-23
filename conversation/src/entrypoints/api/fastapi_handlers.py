@@ -1,6 +1,9 @@
 from fastapi import Depends, APIRouter, Header
-from dependency_injector.wiring import Provide, inject
+from fastapi.exceptions import HTTPException
+from dependency_injector.wiring import Provide, inject, Closing
 
+from src.application.exceptions.authentication_exception import AuthenticationException
+from src.application.ports.unit_of_work import UnitOfWork
 from src.entrypoints.api.models import api_models
 from src.entrypoints.api.ioc import FastapiContainer
 from aws_lambda_powertools import Logger
@@ -24,6 +27,8 @@ async def conversation(
     handler: ConversationCommandHandler = Depends(
         Provide[FastapiContainer.conversation_handler]
     ),
+    user_id: str = Header(alias="X-User-ID"),
+    unit_of_work: UnitOfWork = Depends(Closing[Provide[FastapiContainer.unit_of_work]]),
 ) -> api_models.ConversationResponse:
     """
     Handles incoming requests for conversations. The function takes a
@@ -38,9 +43,14 @@ async def conversation(
         api_models.ConversationResponse: The response containing conversation data.
     """
     logger.info(f"Received request for  conversation: {request}")
+    async with unit_of_work as uow:
+        user_conversations = await uow.conversations.get_by_user_id(user_id)
+
+        if user_id not in {row.user_id for row in user_conversations}:
+            raise HTTPException(status_code=403, detail="Don't have enough permissions")
 
     # Create a command object from the request data
-    command = ConversationCommand(**request.model_dump())
+    command = ConversationCommand(**request.model_dump(), user_id=user_id)
     logger.info(f"Created command: {command}")
 
     # Log the handler instance before execution
@@ -63,7 +73,8 @@ async def create_conversation(
     handler: CreateConversationCommandHandler = Depends(
         Provide[FastapiContainer.create_conversation_handler]
     ),
-) -> api_models.ConversationResponse:
+    user_id: str = Header(alias="X-User-ID"),
+) -> api_models.CreateConversationResponse:
     """
     Handles requests to create a new conversation. It uses the
     CreateConversationCommandHandler to process the request and return a
@@ -78,14 +89,17 @@ async def create_conversation(
     """
     logger.info(f"Received request for create conversation: {request}")
     # Create a command object from the request data
-    command = CreateConversationCommand(**request.model_dump())
+    command = CreateConversationCommand(**request.model_dump(), user_id=user_id)
     logger.info(f"Created command: {command}")
 
     # Log the handler instance before execution
     logger.info(f"Handler instance before execution: {handler}")
 
     # Execute the handler with the created command
-    result = await handler(command)
+    try:
+        result = await handler(command)
+    except AuthenticationException as e:
+        raise HTTPException(status_code=403, detail=str(e))
     logger.info("Handler execution completed")
 
     # Create the response from the result and return it
@@ -99,12 +113,23 @@ async def create_conversation(
 @inject
 async def get_conversations(
     user_id: str = Header(alias="X-User-ID"),
-) -> dict:
+    unit_of_work: UnitOfWork = Depends(Closing[Provide[FastapiContainer.unit_of_work]]),
+) -> api_models.GetConversationResponse:
     """Get all conversations for user"""
     logger.info(f"Getting conversations for user: {user_id}")
     
-    # For now return empty list - would need to implement repository method
-    return {"conversations": []}
+    async with unit_of_work as uow:
+        result = await uow.conversations.get_by_user_id(user_id)
+
+    return api_models.GetConversationResponse(
+        conversation_list=[
+            api_models.GetConversationResponse.Conversation(
+                conversation_id=row.conversation_id,
+                agent_chat_bot_id=row.agent_chat_bot_id
+            )
+            for row in result
+        ]
+    )
 
 
 @router.get("/v1/conversations/{conversation_id}/messages")
@@ -126,21 +151,18 @@ async def get_messages(
 async def delete_conversation(
     conversation_id: str,
     user_id: str = Header(alias="X-User-ID"),
+    unit_of_work: UnitOfWork = Depends(Closing[Provide[FastapiContainer.unit_of_work]]),
 ) -> dict:
     """Delete conversation by ID"""
     logger.info(f"Deleting conversation {conversation_id} for user: {user_id}")
-    
+
+    async with unit_of_work as uow:
+        user_conversations = await uow.conversations.get_by_user_id(user_id)
+
+        if user_id not in {row.user_id for row in user_conversations}:
+            raise HTTPException(status_code=403, detail="Don't have enough permissions")
+        await uow.conversations.delete(conversation_id)
+
+
     # Would need to implement repository method for deletion
     return {"message": f"Conversation {conversation_id} deleted successfully"}
-
-
-# User creation endpoint for API Gateway
-@router.post("/v1/users")
-@inject
-async def create_user(
-    request: dict,
-    user_id: str = Header(alias="X-User-ID"),
-) -> dict:
-    """Create user record in conversation service"""
-    logger.info(f"Creating user record: {request}")
-    return {"message": "User created in conversation service", "user_id": user_id}

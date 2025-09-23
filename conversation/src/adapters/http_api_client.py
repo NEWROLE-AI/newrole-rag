@@ -35,7 +35,7 @@ class HttpSourceManagementApiClient(SourceManagementApiClient):
         self._base_url = source_management_url
 
     async def get_resource_info_by_knowledge_base_id(
-        self, knowledge_base_id: str
+        self, knowledge_base_id: str, user_id: str
     ) -> list[str]:
         """
         Fetches the resource IDs associated with a knowledge base ID from the Source Management API.
@@ -46,19 +46,19 @@ class HttpSourceManagementApiClient(SourceManagementApiClient):
         Returns:
             list[str]: A list of resource IDs associated with the knowledge base.
         """
-        url = f"{self._base_url}/api/v1/{knowledge_base_id}/resources"
+        url = f"{self._base_url}/api/v1/resources/all"
         logger.info(
             f"HttpSourceManagementApiClient: Fetching resources ids with ID={knowledge_base_id}"
         )
         try:
             async with self._session.get(
-                url
+                url, headers={"X-User-ID": user_id}
             ) as response:
                 if response.status != 200:
                     logger.error(
                         f"Error fetching resources ids by knowledge_base_id data for ID={knowledge_base_id}: HTTP {response.status}"
                     )
-                    raise HTTPError()
+                    response.raise_for_status()
                 response_dict = await response.json()
             logger.info(
                 f"HttpSourceManagementApiClient: Successfully fetched resource ids data for ID={knowledge_base_id}"
@@ -78,13 +78,13 @@ class HttpSourceManagementApiClient(SourceManagementApiClient):
         )
         try:
             async with self._session.post(
-                    url, json=request_body
+                    url, json=request_body, ssl=False
             ) as response:
                 if response.status != 200:
                     logger.error(
                         f"Error fetching resources data: HTTP {response.status}"
                     )
-                    raise HTTPError()
+                    response.raise_for_status()
                 resource_data = await response.json()
             logger.info(
                 f"HttpSourceManagementApiClient: Successfully fetched resource data"

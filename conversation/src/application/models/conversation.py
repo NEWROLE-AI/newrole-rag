@@ -82,6 +82,7 @@ class Conversation:
 
     conversation_id: str
     agent_chat_bot_id: str
+    user_id: str
     messages: list[Message] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -95,6 +96,7 @@ class Conversation:
             "conversation_id": self.conversation_id,
             "agent_chat_bot_id": self.agent_chat_bot_id,
             "messages": [message.to_dict() for message in self.messages],
+            "user_id": self.user_id,
         }
 
     @classmethod
@@ -114,4 +116,5 @@ class Conversation:
             messages=[
                 Message.from_dict(message) for message in data.get("messages", [])
             ],
+            user_id=data["user_id"],
         )

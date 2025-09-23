@@ -12,7 +12,6 @@ class ConversationRequest(BaseModel):
 
     conversation_id: str
     message: str
-    user_id: str
 
 
 class ConversationResponse(BaseModel):
@@ -48,3 +47,11 @@ class CreateConversationResponse(BaseModel):
     """
 
     conversation_id: str
+
+
+class GetConversationResponse(BaseModel):
+    class Conversation(BaseModel):
+        conversation_id: str
+        agent_chat_bot_id: str
+
+    conversation_list: list[Conversation]

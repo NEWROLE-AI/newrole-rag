@@ -55,6 +55,14 @@ class ConversationRepository(ABC):
     async def save(self, conversation: Conversation):
         raise NotImplementedError
 
+    @abstractmethod
+    async def get_by_user_id(self, user_id: str) -> list[Conversation]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def delete(self, conversation_id: str):
+        raise NotImplementedError
+
 
 class BackgroundCheckRepository(ABC):
     """

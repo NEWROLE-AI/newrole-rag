@@ -75,7 +75,7 @@ class OpenAIService(AIService):
         Prepare messages while respecting token limits by trimming knowledge base resources if needed.
         """
         system_prompt_template = (
-            f"{prompt.text}\n\n"
+            f"{prompt}\n\n"
             f"{self._system_prompt}\n"
         )
 
@@ -337,7 +337,7 @@ class OpenAIService(AIService):
 
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": json.dumps(messages)}
+            {"role": "user", "content": json.dumps([message.to_dict() for message in messages])},
         ]
 
 

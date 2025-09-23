@@ -1,11 +1,14 @@
+import os
+import motor.motor_asyncio
+
 from aws_lambda_powertools import Logger
 from opensearchpy import AsyncOpenSearch
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from boto3_type_annotations.dynamodb import Client
 from src.adapters.database.repositories.sql_repository import SqlAgentChatBotRepository
-from src.adapters.database.repositories.dynamo_repository import (
-    DynamoConversationRepository, DynamoBackgroundCheckRepository
+from src.adapters.database.repositories.no_sql_repository import (
+    DynamoConversationRepository, DynamoBackgroundCheckRepository, MongoConversationRepository
 )
 from src.adapters.database.repositories.opensearch_repository import (
     OpensearchVectorizedKnowledgeRepository,
@@ -30,7 +33,7 @@ class UnitOfWorkImpl(UnitOfWork):
 
     vectorized_knowledge: OpensearchVectorizedKnowledgeRepository
     agent_chat_bots: SqlAgentChatBotRepository
-    conversations: DynamoConversationRepository
+    conversations: DynamoConversationRepository | MongoConversationRepository
     background_checks: DynamoBackgroundCheckRepository
 
     def __init__(
@@ -38,8 +41,10 @@ class UnitOfWorkImpl(UnitOfWork):
         session: AsyncSession,
         session_custom: AsyncSession,
         opensearch_client: AsyncOpenSearch,
-        dynamo_client: Client,
         knn_parameter: int,
+        dynamo_client: Client | None = None,
+        mongo_client: motor.motor_asyncio.AsyncIOMotorDatabase | None = None,
+
     ) -> None:
         """
         Initializes the Unit of Work with session and repository clients.
@@ -54,6 +59,7 @@ class UnitOfWorkImpl(UnitOfWork):
         self._opensearch_client = opensearch_client
         self._dynamo_client = dynamo_client
         self._knn_parameter = knn_parameter
+        self._mongo_client = mongo_client
 
     async def commit(self) -> None:
         """
@@ -71,8 +77,11 @@ class UnitOfWorkImpl(UnitOfWork):
         self.vectorized_knowledge = OpensearchVectorizedKnowledgeRepository(
             self._opensearch_client, self._knn_parameter
         )
-        self.conversations = DynamoConversationRepository(self._dynamo_client)
-        self.background_checks = DynamoBackgroundCheckRepository(self._dynamo_client)
+        if os.getenv("CONTAINER_TYPE") == "fastapi":
+            self.conversations = MongoConversationRepository(self._mongo_client)
+        else:
+            self.conversations = DynamoConversationRepository(self._dynamo_client)
+            self.background_checks = DynamoBackgroundCheckRepository(self._dynamo_client)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):

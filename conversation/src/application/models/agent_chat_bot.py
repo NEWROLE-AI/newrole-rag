@@ -29,3 +29,4 @@ class AgentChatBot:
     agent_chat_bot_id: str
     knowledge_base_id: str
     prompt: Prompt
+    user_id: str

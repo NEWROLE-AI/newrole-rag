@@ -1,6 +1,8 @@
 import json
 import os
 import traceback
+import motor.motor_asyncio
+import dotenv
 
 import aiohttp
 import boto3
@@ -29,6 +31,7 @@ from src.application.command_handlers.create_conversation import (
 
 logger = Logger(service="ioc")
 
+dotenv.load_dotenv()
 
 def load_secrets():
     env = os.getenv("ENVIRONMENT")
@@ -60,6 +63,7 @@ def load_secrets():
             "opensearch_password": os.getenv("OPENSEARCH_PASSWORD"),
             "source_management_url": os.getenv("SOURCE_MANAGEMENT_URL"),
             "vectorize_service_url": os.getenv("VECTORIZE_SERVICE_URL"),
+            "mongo_uri": os.getenv("MONGO_URI"),
         }
 
     else:
@@ -172,11 +176,23 @@ class FastapiContainer(DeclarativeContainer):
         session_maker=db_session_maker_custom,
     )
 
+    mongo_client = providers.Singleton(
+        motor.motor_asyncio.AsyncIOMotorClient,
+        secrets.get("mongo_uri"),
+    )
+
+    mongo_db= providers.Singleton(
+        motor.motor_asyncio.AsyncIOMotorDatabase,
+        name="conversation",
+        client=mongo_client,
+    )
+
     unit_of_work = providers.Factory(
         UnitOfWorkImpl,
         session=db_session_factory,
         opensearch_client=elastic_search_client,
         dynamo_client=dynamo_client,
+        mongo_client=mongo_db,
         knn_parameter=secrets.get("knn_parameter"),
         session_custom=db_session_factory_custom
     )

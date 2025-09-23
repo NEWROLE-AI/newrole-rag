@@ -71,6 +71,7 @@ class ConversationCommandHandler(BaseCommandHandler):
                     conversation_id=command.conversation_id,
                     agent_chat_bot_id="013ce799-00c2-47da-beaa-3690dd9d28a7",
                     messages=[],
+                    user_id=command.user_id,
                 )
                 await uow.conversations.save(conversation)
             logger.info(f"Handling conversation {conversation}")
@@ -87,13 +88,13 @@ class ConversationCommandHandler(BaseCommandHandler):
             # Fetch the agent details associated with the conversation
             agent = await uow.agent_chat_bots.get(conversation.agent_chat_bot_id)
 
-            resource_info = await self._source_management_api_client.get_resource_info_by_knowledge_base_id(agent.knowledge_base_id)
+            resource_info = await self._source_management_api_client.get_resource_info_by_knowledge_base_id(agent.knowledge_base_id, user_id=command.user_id)
 
             source_management_query_body = await self._ai_service.generate_api_response(
                 conversation.messages, agent.knowledge_base_id, resource_info
             )
 
-            resource_data = await self._source_management_api_client.get_data(request_body=source_management_query_body)
+            resource_data = await self._source_management_api_client.get_data(request_body=source_management_query_body, user_id=command.user_id)
 
             message = await self._ai_service.generate_response_with_resources(
                 prompt=agent.prompt,

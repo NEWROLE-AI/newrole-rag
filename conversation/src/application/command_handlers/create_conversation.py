@@ -4,6 +4,7 @@ from aws_lambda_powertools import Logger
 
 from src.application.command_handlers.base import BaseCommandHandler
 from src.application.commands.create_conversation import CreateConversationCommand
+from src.application.exceptions.authentication_exception import AuthenticationException
 from src.application.models.conversation import Conversation
 from src.application.ports.unit_of_work import UnitOfWork
 
@@ -46,10 +47,16 @@ class CreateConversationCommandHandler(BaseCommandHandler):
             extra={"command": command},
         )
         async with self._unit_of_work as uow:
+            agent_chat_bot = await uow.agent_chat_bots.get(command.agent_chat_bot_id)
+
+            if agent_chat_bot.user_id != command.user_id:
+                raise AuthenticationException("The agent chat bot is not authorized.")
+
             # Create a new conversation object
             conversation = Conversation(
                 conversation_id=str(uuid.uuid4()),
                 agent_chat_bot_id=command.agent_chat_bot_id,
+                user_id=command.user_id,
             )
             logger.info(
                 "Create conversation",

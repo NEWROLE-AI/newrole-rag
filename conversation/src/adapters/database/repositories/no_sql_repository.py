@@ -6,6 +6,7 @@ from decimal import Decimal
 from src.application.models.conversation import Conversation, Message
 from src.application.ports.unit_of_work import ConversationRepository, BackgroundCheckRepository
 from boto3_type_annotations.dynamodb import ServiceResource
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 
 class DynamoConversationRepository(ConversationRepository):
@@ -111,3 +112,91 @@ class DynamoBackgroundCheckRepository(BackgroundCheckRepository):
         request_id = str(uuid.uuid4())
         self._background_checks.put_item(Item={"request_id": request_id, "user_id": user_id, "data": background_check})
         return request_id
+
+
+class MongoConversationRepository(ConversationRepository):
+    """
+    Repository implementation for storing and retrieving conversation data using MongoDB.
+
+    Inherits from ConversationRepository and provides methods to interact with a MongoDB collection
+    for storing and retrieving conversation records.
+
+    Attributes:
+        _database (AsyncIOMotorDatabase): The MongoDB database instance.
+        _conversations: The MongoDB collection for storing conversations.
+    """
+
+    def __init__(self, database: AsyncIOMotorDatabase):
+        """
+        Initializes the MongoConversationRepository with a MongoDB database.
+
+        Args:
+            database (AsyncIOMotorDatabase): The MongoDB database instance.
+        """
+        self._database = database
+        collection_name = f"conversations"
+        self._conversations = self._database[collection_name]
+
+    async def save(self, conversation: Conversation):
+        """
+        Saves a conversation to the MongoDB collection.
+        Uses update_one with upsert for better compatibility.
+        """
+        conversation_dict = conversation.to_dict()
+
+        # Заменяем replace_one на update_one с $set
+        await self._conversations.update_one(
+            {"conversation_id": conversation_dict["conversation_id"]},
+            {"$set": conversation_dict},
+            upsert=True
+        )
+
+    async def get(self, conversation_id: str) -> Conversation | None:
+        """
+        Retrieves a conversation from the MongoDB collection by its ID.
+
+        Args:
+            conversation_id (str): The ID of the conversation to retrieve.
+
+        Returns:
+            Optional[Conversation]: The retrieved Conversation object or None if not found.
+        """
+        document = await self._conversations.find_one(
+            {"conversation_id": conversation_id}
+        )
+
+        if not document:
+            return None
+
+        # Remove MongoDB's _id field if present
+        document.pop("_id", None)
+        return Conversation.from_dict(document)
+
+    async def get_by_user_id(self, user_id: str) -> list[Conversation]:
+        documents = await self._conversations.find(
+            {"user_id": user_id}
+        ).to_list()
+
+        for document in documents:
+            document.pop("_id", None)
+
+        return [Conversation.from_dict(document) for document in documents]
+
+    async def delete(self, conversation_id: str):
+        """
+        Deletes a conversation and raises exception if not found.
+        """
+        if hasattr(self._conversations, 'delete_one'):
+            result = await self._conversations.delete_one(
+                {"conversation_id": conversation_id}
+            )
+            if result.deleted_count == 0:
+                raise ValueError(f"Conversation with id {conversation_id} not found")
+            return True
+        else:
+            result = await self._conversations.remove(
+                {"conversation_id": conversation_id}
+            )
+            if result.get("n", 0) == 0:
+                raise ValueError(f"Conversation with id {conversation_id} not found")
+            return True
