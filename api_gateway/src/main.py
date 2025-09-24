@@ -1,18 +1,32 @@
-import os
-import json
-import uvicorn
-import logging
-from contextlib import asynccontextmanager
-from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, HTTPException, Depends, status, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import httpx
-import firebase_admin
-from firebase_admin import credentials, auth
-from dotenv import load_dotenv
 import base64
+import logging
+import os
+from typing import Optional, Dict, Any
+
+import firebase_admin
+import httpx
+import uvicorn
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Depends, status, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from firebase_admin import credentials, auth
+
+# Импорт моделей из файлов models
+from admin_panel.src.entrypoints.api.models.api_models import (
+    CreatePromptRequest, CreatePromptResponse,
+    CreateAgentChatBotRequest, CreateAgentChatBotResponse,
+    GetPromptsResponse, GetChatbotsResponse
+)
+from conversation.src.entrypoints.api.models.api_models import (
+    CreateConversationRequest, CreateConversationResponse,
+    ConversationRequest, ConversationResponse, GetConversationResponse, GetMessagesResponse
+)
+from source_management.src.entrypoints.api.models.api_models import (
+    CreateKnowledgeBaseRequest, CreateKnowledgeBaseResponse,
+    CreateResourceRequest, CreateResourceResponse,
+    GetKnowledgeBasesResponse, GetAllResourcesResponse
+)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +37,6 @@ load_dotenv()
 
 try:
     from vault_client import get_vault_secrets
-
     vault_available = True
 except ImportError:
     logger.info("Vault client not available, using environment variables")
@@ -48,12 +61,11 @@ FIREBASE_ENABLED = False
 def initialize_firebase():
     """Initialize Firebase Admin SDK"""
     global FIREBASE_ENABLED
-    
     try:
         firebase_project_id = os.getenv("FIREBASE_PROJECT_ID")
-        firebase_private_key = os.getenv("FIREBASE_PRIVATE_KEY") 
+        firebase_private_key = os.getenv("FIREBASE_PRIVATE_KEY")
         firebase_client_email = os.getenv("FIREBASE_CLIENT_EMAIL")
-        
+
         # Проверяем наличие обязательных переменных
         if not all([firebase_project_id, firebase_private_key, firebase_client_email]):
             logger.warning("Firebase credentials not found, running without Firebase Auth")
@@ -90,7 +102,7 @@ def initialize_firebase():
         logger.info(f"Firebase Admin SDK initialized successfully (Environment: {ENVIRONMENT})")
         FIREBASE_ENABLED = True
         return True
-        
+
     except Exception as e:
         logger.error(f"Failed to initialize Firebase: {e}")
         logger.warning("Continuing without Firebase authentication")
@@ -118,10 +130,9 @@ ADMIN_PANEL_URL = os.getenv("ADMIN_PANEL_URL", "http://admin-panel:8000")
 SOURCE_MANAGEMENT_URL = os.getenv("SOURCE_MANAGEMENT_URL", "http://source-management:8000")
 CONVERSATION_URL = os.getenv("CONVERSATION_URL", "http://conversation:8000")
 
-
 async def get_current_user(
-        request: Request,
-        credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> Dict[str, Any]:
     """Get current user - Firebase or dev mode fallback"""
 
@@ -139,8 +150,8 @@ async def get_current_user(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid Firebase authentication token"
                 )
-            # В dev режиме продолжаем к fallback логике
 
+    # В dev режиме продолжаем к fallback логике
     # В production режиме требуем Firebase аутентификацию
     logger.warning(f"Authentication failed - Firebase not available or invalid token")
     logger.info(f"Environment: {ENVIRONMENT}, Firebase enabled: {FIREBASE_ENABLED}")
@@ -159,7 +170,6 @@ async def get_current_user(
             detail="Authentication credentials required",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
 
 @app.post("/api/v1/auth/register")
 async def register_user(user_data: dict):
@@ -200,9 +210,9 @@ async def register_user(user_data: dict):
         logger.error(f"Registration failed: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
+# ========== ADMIN PANEL ENDPOINTS ==========
 
-# Admin Panel endpoints
-@app.get("/api/v1/prompts")
+@app.get("/api/v1/prompts", response_model=GetPromptsResponse)
 async def get_prompts(user: dict = Depends(get_current_user)):
     try:
         async with httpx.AsyncClient() as client:
@@ -219,15 +229,17 @@ async def get_prompts(user: dict = Depends(get_current_user)):
             return {"prompts": []}
         raise HTTPException(status_code=503, detail="Admin panel service unavailable")
 
+@app.post("/api/v1/prompts", response_model=CreatePromptResponse)
+async def create_prompt(prompt_data: CreatePromptRequest, user: dict = Depends(get_current_user)):
+    # Преобразуем модель в dict для отправки в сервис
+    prompt_dict = prompt_data.model_dump()
+    prompt_dict["user_id"] = user["uid"]
 
-@app.post("/api/v1/prompts")
-async def create_prompt(prompt_data: dict, user: dict = Depends(get_current_user)):
-    prompt_data["user_id"] = user["uid"]
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{ADMIN_PANEL_URL}/api/v1/prompts",
-                json=prompt_data,
+                json=prompt_dict,
                 headers={"X-User-ID": user["uid"]}
             )
             response.raise_for_status()
@@ -235,9 +247,8 @@ async def create_prompt(prompt_data: dict, user: dict = Depends(get_current_user
     except Exception as e:
         logger.error(f"Error creating prompt: {e}")
         if DEV_MODE:
-            return {"id": "demo-id", "message": "Prompt created (dev mode)", **prompt_data}
+            return {"prompt_id": "demo-id", "message": "Prompt created (dev mode)"}
         raise HTTPException(status_code=503, detail="Admin panel service unavailable")
-
 
 @app.delete("/api/v1/prompts/{prompt_id}")
 async def delete_prompt(prompt_id: str, user: dict = Depends(get_current_user)):
@@ -255,8 +266,7 @@ async def delete_prompt(prompt_id: str, user: dict = Depends(get_current_user)):
             return {"message": "Prompt deleted (dev mode)"}
         raise HTTPException(status_code=503, detail="Admin panel service unavailable")
 
-
-@app.get("/api/v1/chatbots")
+@app.get("/api/v1/chatbots", response_model=GetChatbotsResponse)
 async def get_chatbots(user: dict = Depends(get_current_user)):
     try:
         async with httpx.AsyncClient() as client:
@@ -272,15 +282,17 @@ async def get_chatbots(user: dict = Depends(get_current_user)):
             return {"chatbots": []}
         raise HTTPException(status_code=503, detail="Admin panel service unavailable")
 
+@app.post("/api/v1/chatbots", response_model=CreateAgentChatBotResponse)
+async def create_chatbot(chatbot_data: CreateAgentChatBotRequest, user: dict = Depends(get_current_user)):
+    # Преобразуем модель в dict и добавляем user_id
+    chatbot_dict = chatbot_data.model_dump()
+    chatbot_dict["user_id"] = user["uid"]
 
-@app.post("/api/v1/chatbots")
-async def create_chatbot(chatbot_data: dict, user: dict = Depends(get_current_user)):
-    chatbot_data["user_id"] = user["uid"]
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{ADMIN_PANEL_URL}/api/v1/agent_chat_bots",
-                json=chatbot_data,
+                json=chatbot_dict,
                 headers={"X-User-ID": user["uid"]}
             )
             response.raise_for_status()
@@ -288,9 +300,8 @@ async def create_chatbot(chatbot_data: dict, user: dict = Depends(get_current_us
     except Exception as e:
         logger.error(f"Error creating chatbot: {e}")
         if DEV_MODE:
-            return {"id": "demo-chatbot-id", "message": "Chatbot created (dev mode)", **chatbot_data}
+            return {"agent_chat_bot_id": "demo-chatbot-id", "message": "Chatbot created (dev mode)"}
         raise HTTPException(status_code=503, detail="Admin panel service unavailable")
-
 
 @app.delete("/api/v1/chatbots/{chatbot_id}")
 async def delete_chatbot(chatbot_id: str, user: dict = Depends(get_current_user)):
@@ -308,9 +319,9 @@ async def delete_chatbot(chatbot_id: str, user: dict = Depends(get_current_user)
             return {"message": "Chatbot deleted (dev mode)"}
         raise HTTPException(status_code=503, detail="Admin panel service unavailable")
 
+# ========== SOURCE MANAGEMENT ENDPOINTS ==========
 
-# Source Management endpoints
-@app.get("/api/v1/knowledge-bases")
+@app.get("/api/v1/knowledge-bases", response_model=GetKnowledgeBasesResponse)
 async def get_knowledge_bases(user: dict = Depends(get_current_user)):
     try:
         async with httpx.AsyncClient() as client:
@@ -326,16 +337,13 @@ async def get_knowledge_bases(user: dict = Depends(get_current_user)):
             return {"knowledge_bases": []}
         raise HTTPException(status_code=503, detail="Source management service unavailable")
 
-
-@app.post("/api/v1/knowledge-bases")
-async def create_knowledge_base(kb_data: dict, user: dict = Depends(get_current_user)):
+@app.post("/api/v1/knowledge-bases", response_model=CreateKnowledgeBaseResponse)
+async def create_knowledge_base(kb_data: CreateKnowledgeBaseRequest, user: dict = Depends(get_current_user)):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{SOURCE_MANAGEMENT_URL}/api/v1/knowledge-bases",
-                json={
-                    "knowledge_base_name": kb_data["name"],
-                },
+                json=kb_data.model_dump(),  # Используем всю модель
                 headers={"X-User-ID": user["uid"]}
             )
             response.raise_for_status()
@@ -343,9 +351,8 @@ async def create_knowledge_base(kb_data: dict, user: dict = Depends(get_current_
     except Exception as e:
         logger.error(f"Error creating knowledge base: {e}")
         if DEV_MODE:
-            return {"id": "demo-kb-id", "message": "Knowledge base created (dev mode)", **kb_data}
+            return {"knowledge_base_id": "demo-kb-id", "message": "Knowledge base created (dev mode)"}
         raise HTTPException(status_code=503, detail="Source management service unavailable")
-
 
 @app.delete("/api/v1/knowledge-bases/{kb_id}")
 async def delete_knowledge_base(kb_id: str, user: dict = Depends(get_current_user)):
@@ -363,8 +370,7 @@ async def delete_knowledge_base(kb_id: str, user: dict = Depends(get_current_use
             return {"message": "Knowledge base deleted (dev mode)"}
         raise HTTPException(status_code=503, detail="Source management service unavailable")
 
-
-@app.get("/api/v1/resources")
+@app.get("/api/v1/resources", response_model=GetAllResourcesResponse)
 async def get_resources(user: dict = Depends(get_current_user)):
     try:
         async with httpx.AsyncClient() as client:
@@ -380,15 +386,17 @@ async def get_resources(user: dict = Depends(get_current_user)):
             return {"resources": []}
         raise HTTPException(status_code=503, detail="Source management service unavailable")
 
+@app.post("/api/v1/resources", response_model=CreateResourceResponse)
+async def create_resource(resource_data: CreateResourceRequest, user: dict = Depends(get_current_user)):
+    # Добавляем user_id в модель перед отправкой
+    resource_dict = resource_data.model_dump()
+    resource_dict["user_id"] = user["uid"]
 
-@app.post("/api/v1/resources")
-async def create_resource(resource_data: dict, user: dict = Depends(get_current_user)):
-    resource_data["user_id"] = user["uid"]
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{SOURCE_MANAGEMENT_URL}/api/v1/resources",
-                json=resource_data,
+                json=resource_dict,
                 headers={"X-User-ID": user["uid"]}
             )
             response.raise_for_status()
@@ -396,9 +404,8 @@ async def create_resource(resource_data: dict, user: dict = Depends(get_current_
     except Exception as e:
         logger.error(f"Error creating resource: {e}")
         if DEV_MODE:
-            return {"id": "demo-resource-id", "message": "Resource created (dev mode)", **resource_data}
+            return {"resource_id": "demo-resource-id", "message": "Resource created (dev mode)"}
         raise HTTPException(status_code=503, detail="Source management service unavailable")
-
 
 @app.delete("/api/v1/resources/{resource_id}")
 async def delete_resource(resource_id: str, user: dict = Depends(get_current_user)):
@@ -416,9 +423,9 @@ async def delete_resource(resource_id: str, user: dict = Depends(get_current_use
             return {"message": "Resource deleted (dev mode)"}
         raise HTTPException(status_code=503, detail="Source management service unavailable")
 
+# ========== CONVERSATION ENDPOINTS ==========
 
-# Conversation endpoints
-@app.get("/api/v1/conversations")
+@app.get("/api/v1/conversations", response_model=GetConversationResponse)
 async def get_conversations(user: dict = Depends(get_current_user)):
     try:
         async with httpx.AsyncClient() as client:
@@ -434,15 +441,17 @@ async def get_conversations(user: dict = Depends(get_current_user)):
             return {"conversations": []}
         raise HTTPException(status_code=503, detail="Conversation service unavailable")
 
+@app.post("/api/v1/conversations", response_model=CreateConversationResponse)
+async def create_conversation(conv_data: CreateConversationRequest, user: dict = Depends(get_current_user)):
+    # Преобразуем модель в dict и добавляем user_id
+    conv_dict = conv_data.model_dump()
+    conv_dict["user_id"] = user["uid"]
 
-@app.post("/api/v1/conversations")
-async def create_conversation(conv_data: dict, user: dict = Depends(get_current_user)):
-    conv_data["user_id"] = user["uid"]
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{CONVERSATION_URL}/api/v1/conversations",
-                json=conv_data,
+                json=conv_dict,
                 headers={"X-User-ID": user["uid"]}
             )
             response.raise_for_status()
@@ -450,9 +459,8 @@ async def create_conversation(conv_data: dict, user: dict = Depends(get_current_
     except Exception as e:
         logger.error(f"Error creating conversation: {e}")
         if DEV_MODE:
-            return {"id": "demo-conv-id", "message": "Conversation created (dev mode)", **conv_data}
+            return {"conversation_id": "demo-conv-id", "message": "Conversation created (dev mode)"}
         raise HTTPException(status_code=503, detail="Conversation service unavailable")
-
 
 @app.delete("/api/v1/conversations/{conversation_id}")
 async def delete_conversation(conversation_id: str, user: dict = Depends(get_current_user)):
@@ -470,8 +478,7 @@ async def delete_conversation(conversation_id: str, user: dict = Depends(get_cur
             return {"message": "Conversation deleted (dev mode)"}
         raise HTTPException(status_code=503, detail="Conversation service unavailable")
 
-
-@app.get("/api/v1/conversations/{conversation_id}/messages")
+@app.get("/api/v1/conversations/{conversation_id}/messages", response_model=GetMessagesResponse)
 async def get_messages(conversation_id: str, user: dict = Depends(get_current_user)):
     try:
         async with httpx.AsyncClient() as client:
@@ -487,15 +494,17 @@ async def get_messages(conversation_id: str, user: dict = Depends(get_current_us
             return {"messages": []}
         raise HTTPException(status_code=503, detail="Conversation service unavailable")
 
+@app.post("/api/v1/conversations/{conversation_id}/messages", response_model=ConversationResponse)
+async def send_message(conversation_id: str, message_data: ConversationRequest, user: dict = Depends(get_current_user)):
+    # Преобразуем модель в dict и добавляем user_id
+    message_dict = message_data.model_dump()
+    message_dict["user_id"] = user["uid"]
 
-@app.post("/api/v1/conversations/{conversation_id}/messages")
-async def send_message(conversation_id: str, message_data: dict, user: dict = Depends(get_current_user)):
-    message_data["user_id"] = user["uid"]
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{CONVERSATION_URL}/api/v1/conversations/{conversation_id}/messages",
-                json=message_data,
+                json=message_dict,
                 headers={"X-User-ID": user["uid"]}
             )
             response.raise_for_status()
@@ -503,9 +512,8 @@ async def send_message(conversation_id: str, message_data: dict, user: dict = De
     except Exception as e:
         logger.error(f"Error sending message: {e}")
         if DEV_MODE:
-            return {"id": "demo-msg-id", "message": "Message sent (dev mode)", **message_data}
+            return {"conversation_id": conversation_id, "message": "Message sent (dev mode)"}
         raise HTTPException(status_code=503, detail="Conversation service unavailable")
-
 
 @app.get("/api/v1/users/profile")
 async def get_user_profile(user: dict = Depends(get_current_user)):
@@ -517,12 +525,10 @@ async def get_user_profile(user: dict = Depends(get_current_user)):
         "email_verified": user.get("email_verified", False)
     }
 
-
 @app.get("/api/v1/health")
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": "2024-01-01T00:00:00Z"}
-
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
