@@ -64,11 +64,13 @@ class CreateRealtimeResourceCommandHandler(BaseCommandHandler):
             )
             raise DomainException("It is not possible to process this type of resource")
 
-        async with self._unit_of_work as uow:
-            knowledge_base = await uow.knowledge_bases.get(command.knowledge_base_id)
+        if command.knowledge_base_id:
+            async with self._unit_of_work as uow:
 
-            if knowledge_base.user_id != command.user_id:
-                raise AuthenticationException("This User is not owner of knowledge base")
+                knowledge_base = await uow.knowledge_bases.get(command.knowledge_base_id)
+
+                if knowledge_base.user_id != command.user_id:
+                    raise AuthenticationException("This User is not owner of knowledge base")
 
         result = await handler(command)
         return result
@@ -104,6 +106,7 @@ class CreateRealtimeResourceCommandHandler(BaseCommandHandler):
                 extra=Database(
                     connection_params=command.connection_params, db_type=command.db_type
                 ),
+                user_id=command.user_id,
             )
             await uow.realtime_resources.add(resource)
             await uow.realtime_databases.add(resource)
@@ -124,7 +127,8 @@ class CreateRealtimeResourceCommandHandler(BaseCommandHandler):
                 knowledge_base_id=knowledge_base.knowledge_base_id,
                 extra=RestApi(
                     url=command.url
-                )
+                ),
+                user_id=command.user_id,
             )
 
             await uow.realtime_resources.add(resource)

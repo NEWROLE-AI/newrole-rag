@@ -357,10 +357,7 @@ class SqlKnowledgeBaseRepository(KnowledgeBaseRepository):
                 user_id=row.user_id,
             )
         else:
-            raise CustomValueError(
-                error_status=ErrorStatus.NOT_FOUND,
-                message=f"Knowledge base with ID {knowledge_base_id} not found",
-            )
+            logger.info(f"No knowledge base with ID {knowledge_base_id} found")
 
     async def get_list_by_id(self, user_id: str) -> list[KnowledgeBase]:
 

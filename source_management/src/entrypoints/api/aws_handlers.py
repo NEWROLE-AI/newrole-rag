@@ -165,7 +165,7 @@ async def get_all_resources(
         Exception: For any other errors during processing
     """
     logger.info(f"Received request for get all resources: {request}")
-    result = await query_service.get_all_resources()
+    result = await query_service.get_all_resources_by_knowledge_base_ids()
     response = api_models.GetAllResourcesResponse(knowledge_bases=result)
     logger.info(f"Returning response with {len(result)} knowledge bases")
     return response

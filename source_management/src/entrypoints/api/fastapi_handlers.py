@@ -149,13 +149,10 @@ async def get_all_resources(
     Raises:
         ValidationError: If request data is invalid
         Exception: For any other errors during processing
+
     """
-
-    async with unit_of_work as uow:
-        knowledge_base_list = await uow.knowledge_bases.get_list_by_id(user_id)
-
     logger.info(f"Received request for get all resources by user_id: {user_id}")
-    result = await query_service.get_all_resources([knowledge_base.knowledge_base_id for knowledge_base in knowledge_base_list])
+    result = await query_service.get_all_resources_by_user_id(user_id=user_id)
     response = api_models.GetAllResourcesResponse(resource_list=result)
     logger.info(f"Returning response with {len(result)} knowledge bases")
     return response

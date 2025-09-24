@@ -183,7 +183,7 @@ class MongoQueryService:
         ).to_list()
         return {"resource_ids": [row['resource_id'] for row in resource_ids]}
 
-    async def get_all_resources(self, knowledge_base_ids: list[str]) -> List[dict]:
+    async def get_all_resources_by_knowledge_base_ids(self, knowledge_base_ids: list[str]) -> List[dict]:
         cursor = self._resources_collection.find(
             {"knowledge_base_id": {"$in": knowledge_base_ids}}
         )
@@ -201,3 +201,21 @@ class MongoQueryService:
 
         return resources
 
+    async def get_all_resources_by_user_id(self, user_id: str) -> List[dict]:
+        cursor = self._resources_collection.find(
+            {"user_id": user_id}
+        )
+
+        resources = []
+
+        async for resource_doc in cursor:
+            resource_info = {
+                "resource_id": resource_doc.get("resource_id"),
+                "type": resource_doc.get("type"),
+                "extra": resource_doc.get("extra", {}),
+                "knowledge_base_id": resource_doc.get("knowledge_base_id"),
+                "user_id": resource_doc.get("user_id")
+            }
+            resources.append(resource_info)
+
+        return resources

@@ -96,11 +96,13 @@ class CreateVectorizedResourceCommandHandler(BaseCommandHandler):
             )
             raise DomainException("It is not possible to process this type of resource")
 
-        async with self._unit_of_work as uow:
-            knowledge_base = await uow.knowledge_bases.get(command.knowledge_base_id)
+        if command.knowledge_base_id:
+            async with self._unit_of_work as uow:
 
-            if knowledge_base.user_id != command.user_id:
-                raise AuthenticationException("This User is not owner of knowledge base")
+                knowledge_base = await uow.knowledge_bases.get(command.knowledge_base_id)
+
+                if knowledge_base.user_id != command.user_id:
+                    raise AuthenticationException("This User is not owner of knowledge base")
 
         result = await handler(command)
         return result
@@ -139,6 +141,7 @@ class CreateVectorizedResourceCommandHandler(BaseCommandHandler):
                 type=command.vectorized_resource_type,
                 knowledge_base_id=knowledge_base.knowledge_base_id,
                 extra=extra,
+                user_id=command.user_id,
             )
             await uow.resources.add(resource)
             await uow.slack_channels.save(resource)
@@ -171,6 +174,7 @@ class CreateVectorizedResourceCommandHandler(BaseCommandHandler):
                 type=command.vectorized_resource_type,
                 knowledge_base_id=knowledge_base.knowledge_base_id,
                 extra=File(extension=command.file_type),
+                user_id=command.user_id,
             )
             presigned_url = await self._storage_manager.generate_presigned_url(
                 knowledge_base_name=knowledge_base.knowledge_base_id,
@@ -212,10 +216,11 @@ class CreateVectorizedResourceCommandHandler(BaseCommandHandler):
             resource = Resource(
                 resource_id=str(uuid.uuid4()),
                 type=command.vectorized_resource_type,
-                knowledge_base_id=knowledge_base.knowledge_base_id,
+                knowledge_base_id=knowledge_base.knowledge_base_id if knowledge_base else None,
                 extra=Database(
                     connection_params=command.connection_params, query=command.query
                 ),
+                user_id=command.user_id,
             )
             await uow.resources.add(resource)
             await uow.databases.add(resource)
@@ -253,6 +258,7 @@ class CreateVectorizedResourceCommandHandler(BaseCommandHandler):
                 type=command.vectorized_resource_type,
                 knowledge_base_id=knowledge_base.knowledge_base_id,
                 extra=GoogleDrive(google_drive_url=command.google_drive_url),
+                user_id=command.user_id,
             )
             await uow.resources.add(resource)
             await uow.commit()
@@ -273,6 +279,7 @@ class CreateVectorizedResourceCommandHandler(BaseCommandHandler):
                 type=command.vectorized_resource_type,
                 knowledge_base_id=knowledge_base.knowledge_base_id,
                 extra=DynamodbTable(table_name=command.dynamodb_table_name),
+                user_id=command.user_id,
             )
             await uow.resources.add(resource)
             await uow.commit()

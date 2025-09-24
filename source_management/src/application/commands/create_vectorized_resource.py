@@ -21,8 +21,8 @@ class CreateVectorizedResourceCommand(BaseCommand):
     """
 
     vectorized_resource_type: VectorizedResourceType
-    knowledge_base_id: str
     user_id: str
+    knowledge_base_id: str | None = None
     channel_id: str | None = None
     file_type: str | None = None
     messages: list[dict] | None = None

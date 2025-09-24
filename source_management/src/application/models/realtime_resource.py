@@ -39,7 +39,8 @@ class RestApi:
 
 @dataclass
 class RealtimeResource:
-    resource_id: str
     knowledge_base_id: str
     type: RealtimeResourceType
+    user_id: str
+    resource_id: str | None = None
     extra: Database | RestApi | None = None

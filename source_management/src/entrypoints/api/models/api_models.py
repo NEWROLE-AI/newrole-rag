@@ -22,7 +22,7 @@ class CreateResourceRequest(BaseModel):
         messages(list[dict] | None): Optional list of messages
     """
 
-    knowledge_base_id: str
+    knowledge_base_id: str | None = None
     resource_type: ResourceType
     vectorized_resource_type: VectorizedResourceType | None = None
     realtime_resource_type: RealtimeResourceType | None = None

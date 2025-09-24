@@ -50,9 +50,10 @@ class Resource(DictFormatMixin):
     """
 
     resource_id: str
-    knowledge_base_id: str
     type: VectorizedResourceType
+    user_id: str
     extra: SlackChannel | File | Database | GoogleDrive | DynamodbTable | None = None
+    knowledge_base_id: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict) -> Resource:
