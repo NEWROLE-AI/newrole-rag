@@ -518,7 +518,7 @@ async function createPrompt() {
     if (!text) return showMessage("Please enter prompt text", "error");
 
     try {
-        await apiCall("/prompts", "POST", { prompt_text: text });
+        await apiCall("/prompts", "POST", { text: text });
         showMessage("Prompt created successfully", "success");
         document.getElementById("prompt-text").value = "";
         await loadPrompts();
@@ -582,7 +582,7 @@ async function createKnowledgeBase() {
     if (!name) return showMessage("Please enter knowledge base name", "error");
 
     try {
-        await apiCall("/knowledge-bases", "POST", { name });
+        await apiCall("/knowledge-bases", "POST", { knowledge_base_name: name });
         showMessage("Knowledge base created", "success");
         if (kbNameInput) kbNameInput.value = "";
         closeKbCreation();
@@ -1085,24 +1085,21 @@ function renderResourceForm(type, category) {
 /* ========================= Chatbots ========================= */
 async function createChatbot() {
     const name = document.getElementById("chatbot-name")?.value.trim();
-    const model = document.getElementById("chatbot-model")?.value;
-    const temperature = parseFloat(document.getElementById("temperature")?.value || "0.7");
-    const maxTokens = parseInt(document.getElementById("max-tokens")?.value || "1000");
-    const systemPrompt = document.getElementById("system-prompt")?.value.trim();
+    const knowledgeBaseId = document.getElementById("chatbot-knowledge-base")?.value || null;
+    const promptId = document.getElementById("chatbot-prompt")?.value || null;
 
     if (!name) return showMessage("Please enter chatbot name", "error");
 
     try {
-        await apiCall("/chatbots", "POST", {
-            name,
-            model,
-            temperature,
-            max_tokens: maxTokens,
-            system_prompt: systemPrompt
-        });
+        const payload = { name };
+        if (knowledgeBaseId) payload.knowledge_base_id = knowledgeBaseId;
+        if (promptId) payload.prompt_id = promptId;
+
+        await apiCall("/chatbots", "POST", payload);
         showMessage("Chatbot created", "success");
         document.getElementById("chatbot-name").value = "";
-        document.getElementById("system-prompt").value = "";
+        if (document.getElementById("chatbot-knowledge-base")) document.getElementById("chatbot-knowledge-base").value = "";
+        if (document.getElementById("chatbot-prompt")) document.getElementById("chatbot-prompt").value = "";
         await loadChatbots();
     } catch (e) {
         showMessage(`Error создания чатбота: ${e.message}`, "error");
@@ -1176,7 +1173,7 @@ async function newConversation() {
     if (!chatbotId) return showMessage("Please select a chatbot", "error");
 
     try {
-        await apiCall("/conversations", "POST", { chatbot_id: chatbotId });
+        await apiCall("/conversations", "POST", { agent_chat_bot_id: chatbotId });
         showMessage("New conversation created", "success");
         await loadConversations();
     } catch (e) {
@@ -1280,8 +1277,8 @@ async function sendMessage() {
 
     try {
         await apiCall(`/conversations/${conversationId}/messages`, "POST", {
-            role: "user",
-            content
+            conversation_id: conversationId,
+            message: content
         });
         showMessage("Message sent", "success");
         document.getElementById("chat-input").value = "";
