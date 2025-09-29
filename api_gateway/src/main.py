@@ -12,20 +12,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from firebase_admin import credentials, auth
 
-# Импорт моделей из файлов models
-from admin_panel.src.entrypoints.api.models.api_models import (
+# Импорт моделей из локального файла models
+from models import (
+    # Admin Panel Models
     CreatePromptRequest, CreatePromptResponse,
     CreateAgentChatBotRequest, CreateAgentChatBotResponse,
-    GetPromptsResponse, GetChatbotsResponse
-)
-from conversation.src.entrypoints.api.models.api_models import (
+    GetPromptsResponse, GetChatbotsResponse,
+
+    # Conversation Models
     CreateConversationRequest, CreateConversationResponse,
-    ConversationRequest, ConversationResponse, GetConversationResponse, GetMessagesResponse
-)
-from source_management.src.entrypoints.api.models.api_models import (
+    ConversationRequest, ConversationResponse, GetMessagesResponse,
+
+    # Source Management Models
     CreateKnowledgeBaseRequest, CreateKnowledgeBaseResponse,
     CreateResourceRequest, CreateResourceResponse,
-    GetKnowledgeBasesResponse, GetAllResourcesResponse
+    GetKnowledgeBasesResponse
 )
 
 # Setup logging
@@ -370,7 +371,7 @@ async def delete_knowledge_base(kb_id: str, user: dict = Depends(get_current_use
             return {"message": "Knowledge base deleted (dev mode)"}
         raise HTTPException(status_code=503, detail="Source management service unavailable")
 
-@app.get("/api/v1/resources", response_model=GetAllResourcesResponse)
+@app.get("/api/v1/resources")
 async def get_resources(user: dict = Depends(get_current_user)):
     try:
         async with httpx.AsyncClient() as client:
@@ -379,11 +380,17 @@ async def get_resources(user: dict = Depends(get_current_user)):
                 headers={"X-User-ID": user["uid"]}
             )
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            # Convert various response formats to UI-compatible format
+            if "resource_list" in data:
+                return {"knowledge_bases": data["resource_list"]}
+            elif "knowledge_bases" in data:
+                return data
+            return {"knowledge_bases": []}
     except Exception as e:
         logger.error(f"Error getting resources: {e}")
         if DEV_MODE:
-            return {"resources": []}
+            return {"knowledge_bases": []}
         raise HTTPException(status_code=503, detail="Source management service unavailable")
 
 @app.post("/api/v1/resources", response_model=CreateResourceResponse)
@@ -425,7 +432,7 @@ async def delete_resource(resource_id: str, user: dict = Depends(get_current_use
 
 # ========== CONVERSATION ENDPOINTS ==========
 
-@app.get("/api/v1/conversations", response_model=GetConversationResponse)
+@app.get("/api/v1/conversations")
 async def get_conversations(user: dict = Depends(get_current_user)):
     try:
         async with httpx.AsyncClient() as client:
@@ -434,7 +441,11 @@ async def get_conversations(user: dict = Depends(get_current_user)):
                 headers={"X-User-ID": user["uid"]}
             )
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            # Convert conversation_list to conversations for UI compatibility
+            if "conversation_list" in data:
+                return {"conversations": data["conversation_list"]}
+            return data
     except Exception as e:
         logger.error(f"Error getting conversations: {e}")
         if DEV_MODE:
