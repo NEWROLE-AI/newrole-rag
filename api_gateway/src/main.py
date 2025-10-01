@@ -272,7 +272,7 @@ async def get_chatbots(user: dict = Depends(get_current_user)):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{ADMIN_PANEL_URL}/api/v1/agent_chat_bots",
+                f"{ADMIN_PANEL_URL}/api/v1/chatbots",
                 headers={"X-User-ID": user["uid"]}
             )
             response.raise_for_status()
@@ -376,7 +376,7 @@ async def get_resources(user: dict = Depends(get_current_user)):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{SOURCE_MANAGEMENT_URL}/api/v1/resources",
+                f"{SOURCE_MANAGEMENT_URL}/api/v1/resources/all",
                 headers={"X-User-ID": user["uid"]}
             )
             response.raise_for_status()

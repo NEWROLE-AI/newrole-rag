@@ -25,7 +25,7 @@ class CreatePromptResponse(BaseModel):
 class CreateAgentChatBotRequest(BaseModel):
     name: str
     knowledge_base_id: str | None = None
-    prompt_id: str | None = None
+    prompt_id: str
 
 
 class CreateAgentChatBotResponse(BaseModel):
@@ -146,7 +146,7 @@ class GetMessagesResponse(BaseModel):
 # ========== SOURCE MANAGEMENT MODELS ==========
 
 # Enums for Source Management
-class ResourceType(Enum):
+class ResourceType(str, Enum):
     VECTORIZED = "VECTORIZED"
     REALTIME = "REALTIME"
 
@@ -160,7 +160,7 @@ class VectorizedResourceType(str, Enum):
     DYNAMODB_TABLE = "DYNAMODB_TABLE"
 
 
-class RealtimeResourceType(Enum):
+class RealtimeResourceType(str, Enum):
     """
     Enum representing types of realtime resources.
 
@@ -171,12 +171,12 @@ class RealtimeResourceType(Enum):
     REST_API = "REST_API"
 
 
-class DbType(Enum):
+class DbType(str, Enum):
     POSTGRESQL = "POSTGRESQL"
     MYSQL = "MYSQL"
 
 
-class RestApiMethods(Enum):
+class RestApiMethods(str, Enum):
     """
     Enum representing HTTP methods for REST API resources.
     """

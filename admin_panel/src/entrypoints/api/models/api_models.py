@@ -12,7 +12,7 @@ class CreatePromptResponse(BaseModel):
 class CreateAgentChatBotRequest(BaseModel):
     name: str
     knowledge_base_id: str | None = None
-    prompt_id: str | None = None
+    prompt_id: str
 
 
 class CreateAgentChatBotResponse(BaseModel):

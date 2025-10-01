@@ -80,6 +80,7 @@ services:
       CONTAINER_TYPE: fastapi
       ENVIRONMENT: dev
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@admin-panel-postgres:5433/admin_panel
+      MONGO_URI: mongodb://source-management-mongo-db:27017
     restart: unless-stopped
 
   admin-panel:
