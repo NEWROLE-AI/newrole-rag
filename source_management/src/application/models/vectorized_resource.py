@@ -10,7 +10,9 @@ class VectorizedResourceType(str, Enum):
 
     STATIC_FILE = "STATIC_FILE"
     SLACK_CHANNEL = "SLACK_CHANNEL"
-    DATABASE = "DATABASE"
+    POSTGRESQL = "POSTGRESQL"
+    MSSQL = "MSSQL"
+    MYSQL = "MYSQL"
     GOOGLE_DRIVE = "GOOGLE_DRIVE"
     DYNAMODB_TABLE = "DYNAMODB_TABLE"
 
@@ -68,7 +70,8 @@ class Resource(DictFormatMixin):
             resource_id=data.get("resource_id"),
             knowledge_base_id=data.get("knowledge_base_id"),
             type=VectorizedResourceType(data.get("type")),
-            extra=extra
+            extra=extra,
+            user_id=data.get("user_id"),
         )
 
 
@@ -82,7 +85,8 @@ class File(DictFormatMixin):
 
 @dataclass
 class Database(DictFormatMixin):
-    connection_params: dict[str, str]
+    database_secret_path: str
+    connection_params: dict[str, str | int]
     query: str
 
 @dataclass
@@ -141,7 +145,9 @@ class DynamodbTable:
 RESOURCE_TYPE_MAP: dict[str, type] = {
     VectorizedResourceType.SLACK_CHANNEL.value: SlackChannel,
     VectorizedResourceType.STATIC_FILE.value: File,
-    VectorizedResourceType.DATABASE.value: Database,
+    VectorizedResourceType.POSTGRESQL.value: Database,
+    VectorizedResourceType.MYSQL.value: Database,
+    VectorizedResourceType.MSSQL.value: Database,
     VectorizedResourceType.GOOGLE_DRIVE.value: GoogleDrive,
     VectorizedResourceType.DYNAMODB_TABLE.value: DynamodbTable,
 }

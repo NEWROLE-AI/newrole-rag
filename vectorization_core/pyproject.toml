@@ -18,6 +18,9 @@ tqdm = "^4.67.1"
 fasttext = "^0.9.3"
 boto3 = "^1.35.90"
 boto3-type-annotations = "^0.3.1"
+hvac = "^2.3.0"
+dotenv = "^0.9.9"
+unicorn = "^2.1.4"
 
 
 [tool.poetry.group.dev.dependencies]

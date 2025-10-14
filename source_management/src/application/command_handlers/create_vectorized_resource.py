@@ -66,7 +66,9 @@ class CreateVectorizedResourceCommandHandler(BaseCommandHandler):
         self._handlers = {
             VectorizedResourceType.STATIC_FILE: self._static_file_handler,
             VectorizedResourceType.SLACK_CHANNEL: self._slack_channel_handler,
-            VectorizedResourceType.DATABASE: self._database_handler,
+            VectorizedResourceType.POSTGRESQL: self._database_handler,
+            VectorizedResourceType.MYSQL: self._database_handler,
+            VectorizedResourceType.MSSQL: self._database_handler,
             VectorizedResourceType.GOOGLE_DRIVE: self._google_drive_handler,
             VectorizedResourceType.DYNAMODB_TABLE: self._dynamodb_table_handler,
         }
@@ -213,12 +215,15 @@ class CreateVectorizedResourceCommandHandler(BaseCommandHandler):
         async with self._unit_of_work as uow:
             knowledge_base = await uow.knowledge_bases.get(command.knowledge_base_id)
 
+            resource_id = str(uuid.uuid4())
             resource = Resource(
-                resource_id=str(uuid.uuid4()),
+                resource_id=resource_id,
                 type=command.vectorized_resource_type,
                 knowledge_base_id=knowledge_base.knowledge_base_id if knowledge_base else None,
                 extra=Database(
-                    connection_params=command.connection_params, query=command.query
+                    database_secret_path=f"secret/data/database_info/{resource_id}",
+                    query=command.query,
+                    connection_params=command.connection_params,
                 ),
                 user_id=command.user_id,
             )

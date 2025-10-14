@@ -99,7 +99,13 @@ class MongoResourceRepository(ResourceRepository):
 
     async def add(self, resource: Resource) -> None:
         collection = self.db["resources"]
-        await collection.insert_one(resource.to_dict())
+
+        resource = resource.to_dict()
+
+        if resource.get('extra', {}).get("connection_params"):
+            del resource['extra']["connection_params"]
+
+        await collection.insert_one(resource)
 
     async def get_by_knowledge_base_id(self, knowledge_base_id: str) -> list[dict]:
         collection = self.db["resources"]
@@ -536,7 +542,7 @@ class VaultManagerDatabaseRepository(DatabaseRepository):
             logger.error("Invalid resource: missing connection parameters")
             raise DomainException("Invalid resource: missing connection parameters")
 
-        path = f"{self._secret_path_prefix}/{resource.knowledge_base_id}/{resource.resource_id}"
+        path = f"{self._secret_path_prefix}/{resource.resource_id}"
 
         secret_data = {
             "data": {

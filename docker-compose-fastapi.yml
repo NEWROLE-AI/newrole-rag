@@ -149,6 +149,23 @@ services:
       - conversation
     restart: unless-stopped
 
+  vectorization_core:
+    build:
+      context: ./vectorization_core
+      dockerfile: Dockerfile
+    container_name: vectorization-core
+    ports:
+      - "8010:8000"
+    environment:
+      CONTAINER_TYPE: fastapi
+      ENVIRONMENT: dev
+    deploy:
+      resources:
+        limits:
+          memory: 50G
+        reservations:
+          memory: 16G
+
   ui:
     build:
       context: ./ui
@@ -159,7 +176,42 @@ services:
       - api-gateway
     restart: unless-stopped
 
+  opensearch:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=MyStrongPassword123!
+      - plugins.security.disabled=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: opensearch-dashboards
+    ports:
+      - "5601:5601"
+    environment:
+      - OPENSEARCH_HOSTS=["https://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=false
+    depends_on:
+      - opensearch
+
+
 volumes:
   source_management_postgres_data:
   admin_panel_postgres_data:
   mongo_data:
+  opensearch-data:

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.entrypoints.api import fastapi_handlers
-from src.entrypoints.api.ioc import Container
+from src.entrypoints.api.ioc import FastapiContainer
 
 
 class ServiceBootStrap:
@@ -24,7 +24,7 @@ class ServiceBootStrap:
         Returns:
             FastAPI: Configured FastAPI application instance
         """
-        container = Container()
+        container = FastapiContainer()
         container.init_resources()
         service_api: FastAPI = FastAPI()
         service_api.container = container
@@ -48,4 +48,4 @@ app = ServiceBootStrap.create_service_api()
 @app.on_event("startup")
 async def startup_event():
     """Initializes application dependencies on startup."""
-    await Container.initialize_app()
+    await FastapiContainer.initialize_app()

@@ -1,8 +1,8 @@
 from fastapi import Depends, APIRouter
-from dependency_injector.wiring import Provide, inject
+from dependency_injector.wiring import Provide, inject, Closing
 
 from src.adapters.fasttext_vectorizer import FastTextVectorizer
-from src.entrypoints.api.ioc import Container
+from src.entrypoints.api.ioc import FastapiContainer
 from aws_lambda_powertools import Logger
 
 from src.entrypoints.api.models.api_models import (
@@ -20,7 +20,7 @@ logger = Logger(service="VectorizationService")
 async def vectorize_text(
     request: VectorizeTextRequest,
     vectorize_service: FastTextVectorizer = Depends(
-        Provide[Container.fasttext_vectorizer]
+        Provide[FastapiContainer.fasttext_vectorizer]
     ),
 ):
     """
@@ -37,6 +37,10 @@ async def vectorize_text(
         VectorizeTextResponse: Response containing the vectorized text representation
     """
     logger.info("Received vectorize text request", extra={"request": request})
+    print(type(vectorize_service))
     vector = await vectorize_service.vectorize_text(request.text)
     logger.info("Vectorization completed successfully")
     return VectorizeTextResponse(vectorized_text=vector)
+
+container = FastapiContainer()
+container.wire(modules=[__name__])
